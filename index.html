@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f44d61" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="小游戏" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>小游戏</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-32.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <header class="topbar">
+        <button class="brand" id="homeBtn" type="button" aria-label="返回游戏合集">
+          <img src="assets/icons/icon-192.png" alt="" />
+          <span>
+            <strong>小游戏</strong>
+            <small>Kitty Games</small>
+          </span>
+        </button>
+        <div class="top-actions">
+          <div class="coin-pill" aria-label="金币">
+            <span>金币</span>
+            <strong id="coinCount">0</strong>
+          </div>
+          <button class="icon-button" id="muteBtn" type="button" title="静音" aria-label="静音">♪</button>
+          <button class="icon-button" id="exportBtn" type="button" title="导出存档" aria-label="导出存档">⇩</button>
+          <button class="icon-button" id="importBtn" type="button" title="导入存档" aria-label="导入存档">⇧</button>
+          <input id="importFile" class="visually-hidden" type="file" accept="application/json" />
+        </div>
+      </header>
+
+      <main id="screen" class="screen" aria-live="polite"></main>
+    </div>
+
+    <template id="hubTemplate">
+      <section class="hub-grid">
+        <aside class="profile-panel">
+          <div class="profile-card">
+            <img class="profile-kitty" src="assets/kitty-source.jpg" alt="" />
+            <div>
+              <p class="eyebrow">今日状态</p>
+              <h1>偷偷玩两分钟</h1>
+              <p class="save-note">自动存档 · 本地单机 · 可离线</p>
+            </div>
+          </div>
+          <div class="daily-strip">
+            <div>
+              <span>已玩</span>
+              <strong id="playsCount">0</strong>
+            </div>
+            <div>
+              <span>解锁</span>
+              <strong id="unlockCount">0</strong>
+            </div>
+            <div>
+              <span>最好</span>
+              <strong id="bestCount">0</strong>
+            </div>
+          </div>
+          <div class="save-actions">
+            <button class="mini-button" id="hubExportBtn" type="button">导出存档</button>
+            <button class="mini-button" id="hubImportBtn" type="button">导入存档</button>
+          </div>
+        </aside>
+        <section>
+          <div class="section-head">
+            <p class="eyebrow">Game Shelf</p>
+            <h2>小游戏</h2>
+          </div>
+          <div id="gameCards" class="game-cards"></div>
+        </section>
+      </section>
+    </template>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
