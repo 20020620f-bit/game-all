@@ -67,8 +67,8 @@ const games = [
 ];
 
 const defaultSave = {
-  version: 1,
-  coins: 80,
+  version: 2,
+  coins: 9999,
   muted: true,
   plays: 0,
   unlocked: {
@@ -278,7 +278,12 @@ function loadSave() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return structuredClone(defaultSave);
     const parsed = JSON.parse(raw);
-    return mergeSave(structuredClone(defaultSave), parsed);
+    const loaded = mergeSave(structuredClone(defaultSave), parsed);
+    if ((parsed.version || 1) < 2) {
+      loaded.version = 2;
+      loaded.coins = Math.max(Number(loaded.coins) || 0, 9999);
+    }
+    return loaded;
   } catch {
     return structuredClone(defaultSave);
   }

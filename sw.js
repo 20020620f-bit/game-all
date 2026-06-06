@@ -1,4 +1,4 @@
-const CACHE_NAME = "kitty-mini-games-v2";
+const CACHE_NAME = "kitty-mini-games-v4";
 const ASSETS = [
   "./",
   "index.html",
@@ -7,6 +7,9 @@ const ASSETS = [
   "manifest.webmanifest",
   "assets/kitty-source.jpg",
   "assets/icons/icon-32.png",
+  "assets/icons/icon-120.png",
+  "assets/icons/icon-152.png",
+  "assets/icons/icon-167.png",
   "assets/icons/icon-180.png",
   "assets/icons/icon-192.png",
   "assets/icons/icon-512.png",
