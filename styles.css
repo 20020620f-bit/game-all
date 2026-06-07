@@ -1935,6 +1935,173 @@ h3 {
   border-radius: 0 999px 999px 0;
 }
 
+.shooter-surface {
+  display: grid;
+  place-items: center;
+  min-height: 620px;
+  padding: 10px;
+  background:
+    linear-gradient(180deg, rgba(226, 235, 235, 0.9), rgba(247, 250, 248, 0.9)),
+    #eef3f1;
+}
+
+.shooter-wrap {
+  position: relative;
+  width: min(100%, 430px);
+  height: min(73svh, 680px);
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid rgba(42, 49, 52, 0.34);
+  border-radius: 8px;
+  background: #c9d0d0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38);
+  touch-action: none;
+}
+
+.shooter-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.shooter-hud,
+.shooter-subhud {
+  position: absolute;
+  z-index: 3;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.shooter-hud {
+  top: 12px;
+}
+
+.shooter-subhud {
+  top: 70px;
+  color: rgba(29, 35, 38, 0.72);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.shooter-score,
+.shooter-life {
+  display: grid;
+  gap: 3px;
+  min-width: 84px;
+  padding: 7px 9px;
+  border: 1px solid rgba(29, 35, 38, 0.12);
+  border-radius: 8px;
+  background: rgba(240, 246, 245, 0.58);
+  color: #1d2326;
+  backdrop-filter: blur(8px);
+}
+
+.shooter-score span,
+.shooter-life span {
+  font-size: 0.66rem;
+  font-weight: 900;
+  color: rgba(29, 35, 38, 0.62);
+}
+
+.shooter-score strong,
+.shooter-life strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+  font-size: 1.45rem;
+  font-weight: 900;
+}
+
+.shooter-life {
+  justify-items: end;
+  text-align: right;
+}
+
+.shooter-life i {
+  font-style: normal;
+  font-size: 1.08rem;
+}
+
+.shooter-pips {
+  display: flex;
+  gap: 4px;
+}
+
+.shooter-pips span {
+  width: 16px;
+  height: 6px;
+  border: 1px solid rgba(29, 35, 38, 0.54);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.shooter-pips .is-live {
+  background: #f45668;
+  border-color: #1d2326;
+}
+
+.shooter-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(24, 30, 34, 0.24);
+  transition: opacity 160ms ease;
+}
+
+.shooter-overlay.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.shooter-panel {
+  width: min(100%, 320px);
+  padding: 18px;
+  border: 1px solid rgba(29, 35, 38, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 48px rgba(29, 35, 38, 0.2);
+  text-align: center;
+}
+
+.shooter-panel h3 {
+  margin-bottom: 8px;
+  font-size: 1.18rem;
+}
+
+.shooter-panel p {
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.shooter-actions {
+  display: grid;
+  gap: 9px;
+}
+
+.shooter-actions button {
+  width: 100%;
+}
+
+.shooter-actions button:disabled {
+  cursor: not-allowed;
+  border-color: #d6dbe1;
+  background: #eceff2;
+  color: #9099a3;
+}
+
 .toast {
   position: fixed;
   left: 50%;
@@ -2148,6 +2315,30 @@ h3 {
   .game-surface {
     min-height: 440px;
     padding: 12px;
+  }
+
+  .shooter-surface {
+    min-height: 590px;
+    padding: 6px;
+  }
+
+  .shooter-wrap {
+    width: 100%;
+    height: calc(100svh - 242px);
+    min-height: 548px;
+    max-height: 660px;
+  }
+
+  .shooter-hud,
+  .shooter-subhud {
+    left: 10px;
+    right: 10px;
+  }
+
+  .shooter-score,
+  .shooter-life {
+    min-width: 78px;
+    padding: 6px 8px;
   }
 
   .sort-items {

@@ -99,6 +99,15 @@ const games = [
     blurb: "进货、定价、布置摊位，开张收摊。",
     bestLabel: "利",
   },
+  {
+    id: "skyShooter",
+    title: "纸飞机射击",
+    icon: "✈️",
+    color: "#dfe9ef",
+    tag: "射击",
+    blurb: "拖动飞机，射击远处飞来的障碍。",
+    bestLabel: "分",
+  },
 ];
 
 const defaultSave = {
@@ -139,6 +148,7 @@ const defaultSave = {
     milkTea: { best: 0, served: 0, plays: 0 },
     flowerShop: { best: 0, served: 0, plays: 0 },
     stall: { best: 0, day: 1, reputation: 1, plays: 0, last: "还没开张" },
+    skyShooter: { best: 0, plays: 0, kills: 0 },
   },
   updatedAt: Date.now(),
 };
@@ -147,6 +157,7 @@ let save = loadSave();
 let activeGame = null;
 let transient = {};
 let toastTimer = null;
+const SKY_SHOOTER_CONTINUE_COST = 120;
 
 const pairIcons = ["🍓", "🍰", "🧋", "🍩", "🍪", "🍒", "🧁", "🍮"];
 const mergeRanks = [
@@ -449,7 +460,14 @@ function syncChrome() {
   muteBtn.textContent = save.muted ? "♪" : "♫";
 }
 
+function cleanupActiveGame() {
+  if (typeof transient.cleanup === "function") {
+    transient.cleanup();
+  }
+}
+
 function startGame(id) {
+  cleanupActiveGame();
   activeGame = id;
   transient = {};
   if (save.games[id]) {
@@ -462,6 +480,7 @@ function startGame(id) {
 }
 
 function backHome() {
+  cleanupActiveGame();
   activeGame = null;
   transient = {};
   render();
@@ -506,6 +525,7 @@ function render() {
   if (activeGame === "milkTea") renderMilkTea();
   if (activeGame === "flowerShop") renderFlowerShop();
   if (activeGame === "stall") renderStall();
+  if (activeGame === "skyShooter") renderSkyShooter();
 }
 
 function renderHub() {
@@ -1502,6 +1522,683 @@ function renderSceneOptionGroup(container, title, options, active, onPick, emoji
   container.append(section);
 }
 
+function renderSkyShooter() {
+  document.querySelector("#gameStats").hidden = true;
+  toolbarButton("重开", () => transient.skyShooter?.restart());
+
+  const surface = document.querySelector("#gameSurface");
+  surface.classList.add("shooter-surface");
+  surface.innerHTML = `
+    <div class="shooter-wrap">
+      <canvas id="skyShooterCanvas" class="shooter-canvas" aria-label="纸飞机射击画面"></canvas>
+      <div class="shooter-hud">
+        <div class="shooter-score">
+          <span>分数</span>
+          <strong id="shooterScore">0</strong>
+        </div>
+        <div class="shooter-life">
+          <span>生命</span>
+          <strong><i>✈</i><b id="shooterLives">3</b></strong>
+          <div id="shooterPips" class="shooter-pips" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="shooter-subhud">
+        <span>最好 <strong id="shooterBest">${save.games.skyShooter.best}</strong></span>
+        <span>金币 <strong id="shooterCoins">${save.coins}</strong></span>
+      </div>
+      <div id="shooterOverlay" class="shooter-overlay" aria-live="polite">
+        <div class="shooter-panel">
+          <h3 id="shooterOverlayTitle"></h3>
+          <p id="shooterOverlayText"></p>
+          <div id="shooterOverlayActions" class="shooter-actions"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const state = createSkyShooter(surface.querySelector(".shooter-wrap"));
+  transient.skyShooter = state;
+  transient.cleanup = () => state.destroy();
+}
+
+function createSkyShooter(root) {
+  const canvas = root.querySelector("#skyShooterCanvas");
+  const ctx = canvas.getContext("2d");
+  const scoreNode = root.querySelector("#shooterScore");
+  const livesNode = root.querySelector("#shooterLives");
+  const pipsNode = root.querySelector("#shooterPips");
+  const bestNode = root.querySelector("#shooterBest");
+  const coinsNode = root.querySelector("#shooterCoins");
+  const overlay = root.querySelector("#shooterOverlay");
+  const overlayTitle = root.querySelector("#shooterOverlayTitle");
+  const overlayText = root.querySelector("#shooterOverlayText");
+  const overlayActions = root.querySelector("#shooterOverlayActions");
+
+  let width = 360;
+  let height = 600;
+  let dpr = 1;
+  let raf = 0;
+  let last = 0;
+  let running = false;
+  let ended = false;
+  let score = 0;
+  let lives = 3;
+  let kills = 0;
+  let spawnTimer = 0;
+  let fireTimer = 0;
+  let bullets = [];
+  let enemyBullets = [];
+  let enemies = [];
+  let particles = [];
+  let backdrop = [];
+  const pointer = { active: false };
+  const player = { x: width / 2, y: height - 80, radius: 25, invulnerable: 0 };
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    width = Math.max(280, rect.width || width);
+    height = Math.max(460, rect.height || height);
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    player.x = clamp(player.x, 36, width - 36);
+    player.y = clamp(player.y, 90, height - 54);
+    if (!backdrop.length) resetBackdrop();
+    draw();
+  }
+
+  function resetBackdrop() {
+    backdrop = Array.from({ length: 26 }, (_, index) => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      r: index % 5 === 0 ? randInt(18, 44) : randInt(2, 6),
+      speed: randInt(14, 42),
+      kind: index % 5 === 0 ? "rock" : "dust",
+      drift: Math.random() * 18 - 9,
+      seed: Math.random() * 10,
+    }));
+  }
+
+  function resetRun() {
+    score = 0;
+    lives = 3;
+    kills = 0;
+    spawnTimer = 0.45;
+    fireTimer = 0;
+    bullets = [];
+    enemyBullets = [];
+    enemies = [];
+    particles = [];
+    ended = false;
+    running = false;
+    player.x = width / 2;
+    player.y = height - 78;
+    player.invulnerable = 1.2;
+    updateHud();
+    draw();
+  }
+
+  function updateHud() {
+    scoreNode.textContent = score;
+    livesNode.textContent = lives;
+    bestNode.textContent = Math.max(save.games.skyShooter.best, score);
+    coinsNode.textContent = save.coins;
+    pipsNode.innerHTML = Array.from({ length: 3 }, (_, index) =>
+      `<span class="${index < lives ? "is-live" : ""}"></span>`,
+    ).join("");
+  }
+
+  function updateOuterStats() {
+    const stats = document.querySelector("#gameStats");
+    if (stats) stats.hidden = true;
+  }
+
+  function setOverlay(title, text, actions) {
+    overlayTitle.textContent = title;
+    overlayText.textContent = text;
+    overlayActions.replaceChildren();
+    actions.forEach((action) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = action.primary ? "primary-button" : "pill-button";
+      button.textContent = action.label;
+      button.disabled = !!action.disabled;
+      button.addEventListener("click", action.onClick);
+      overlayActions.append(button);
+    });
+    overlay.classList.add("is-visible");
+  }
+
+  function hideOverlay() {
+    overlay.classList.remove("is-visible");
+  }
+
+  function start() {
+    if (running) return;
+    hideOverlay();
+    running = true;
+    last = performance.now();
+    raf = window.requestAnimationFrame(step);
+  }
+
+  function restart() {
+    window.cancelAnimationFrame(raf);
+    resetRun();
+    start();
+  }
+
+  function continueWithCoins() {
+    if (save.coins < SKY_SHOOTER_CONTINUE_COST) {
+      toast("金币不够续命");
+      return;
+    }
+    save.coins -= SKY_SHOOTER_CONTINUE_COST;
+    persist();
+    lives = 3;
+    ended = false;
+    player.invulnerable = 2.4;
+    enemies = enemies.filter((enemy) => enemy.y < 0);
+    enemyBullets = [];
+    particles.push(...burst(player.x, player.y, "#f7d65c", 18));
+    updateHud();
+    start();
+  }
+
+  function finishRun() {
+    if (ended) return;
+    ended = true;
+    running = false;
+    window.cancelAnimationFrame(raf);
+    const gameSave = save.games.skyShooter;
+    gameSave.best = Math.max(gameSave.best || 0, score);
+    gameSave.kills = Math.max(gameSave.kills || 0, kills);
+    persist();
+    updateHud();
+    updateOuterStats();
+    setOverlay("飞机坠毁", `本局 ${score} 分，击落 ${kills} 个目标。`, [
+      {
+        label: `花 ${SKY_SHOOTER_CONTINUE_COST} 金币续 3 命`,
+        primary: true,
+        disabled: save.coins < SKY_SHOOTER_CONTINUE_COST,
+        onClick: continueWithCoins,
+      },
+      { label: "重新开始", onClick: restart },
+      { label: "返回首页", onClick: backHome },
+    ]);
+  }
+
+  function step(now) {
+    if (!running) return;
+    const dt = Math.min(0.034, Math.max(0.001, (now - last) / 1000));
+    last = now;
+    update(dt);
+    draw();
+    raf = window.requestAnimationFrame(step);
+  }
+
+  function update(dt) {
+    updateBackdrop(dt);
+    player.invulnerable = Math.max(0, player.invulnerable - dt);
+
+    fireTimer -= dt;
+    if (fireTimer <= 0) {
+      shootPlayerBullet();
+      fireTimer = score > 2500 ? 0.115 : 0.145;
+    }
+
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      spawnEnemy();
+      const difficulty = Math.min(2.4, 1 + score / 3800);
+      spawnTimer = (Math.random() * 0.48 + 0.42) / difficulty;
+    }
+
+    bullets.forEach((bullet) => {
+      bullet.y += bullet.vy * dt;
+      bullet.x += bullet.vx * dt;
+    });
+    enemyBullets.forEach((bullet) => {
+      bullet.y += bullet.vy * dt;
+      bullet.x += bullet.vx * dt;
+    });
+    enemies.forEach((enemy) => {
+      enemy.age += dt;
+      enemy.y += enemy.vy * dt;
+      enemy.x = enemy.baseX + Math.sin(enemy.age * enemy.wave + enemy.seed) * enemy.drift;
+      enemy.shoot -= dt;
+      if (enemy.shoot <= 0 && enemy.y > 40 && enemy.y < height * 0.72) {
+        shootEnemyBullet(enemy);
+        enemy.shoot = enemy.type === "carrier" ? 0.86 : 1.55 + Math.random() * 0.8;
+      }
+    });
+    particles.forEach((particle) => {
+      particle.x += particle.vx * dt;
+      particle.y += particle.vy * dt;
+      particle.life -= dt;
+      particle.vy += 90 * dt;
+    });
+
+    handleCollisions();
+    bullets = bullets.filter((bullet) => bullet.y > -24 && bullet.x > -24 && bullet.x < width + 24);
+    enemyBullets = enemyBullets.filter((bullet) => bullet.y < height + 24 && bullet.x > -24 && bullet.x < width + 24);
+    enemies = enemies.filter((enemy) => enemy.y < height + 90 && enemy.hp > 0);
+    particles = particles.filter((particle) => particle.life > 0);
+    updateHud();
+  }
+
+  function updateBackdrop(dt) {
+    backdrop.forEach((item) => {
+      item.y += item.speed * dt;
+      item.x += item.drift * dt * 0.16;
+      if (item.y > height + item.r + 8) {
+        item.y = -item.r - randInt(0, 80);
+        item.x = Math.random() * width;
+      }
+    });
+  }
+
+  function shootPlayerBullet() {
+    bullets.push({ x: player.x, y: player.y - 34, vx: 0, vy: -520, radius: 4, power: 1 });
+    if (score > 1800) {
+      bullets.push({ x: player.x - 17, y: player.y - 24, vx: -26, vy: -500, radius: 3, power: 1 });
+      bullets.push({ x: player.x + 17, y: player.y - 24, vx: 26, vy: -500, radius: 3, power: 1 });
+    }
+  }
+
+  function shootEnemyBullet(enemy) {
+    if (enemy.type === "carrier") {
+      [-0.72, 0, 0.72].forEach((angle) => {
+        enemyBullets.push({
+          x: enemy.x,
+          y: enemy.y + enemy.radius * 0.5,
+          vx: angle * 90,
+          vy: 178,
+          radius: 4,
+        });
+      });
+      return;
+    }
+    enemyBullets.push({ x: enemy.x, y: enemy.y + enemy.radius, vx: 0, vy: 190, radius: 4 });
+  }
+
+  function spawnEnemy() {
+    const difficulty = Math.min(2.2, 1 + score / 4200);
+    const roll = Math.random();
+    const x = randInt(36, Math.max(37, Math.floor(width - 36)));
+    if (score > 1700 && roll > 0.89) {
+      enemies.push({
+        type: "carrier",
+        x,
+        baseX: x,
+        y: -74,
+        radius: 54,
+        hp: 12,
+        points: 620,
+        vy: 42 + difficulty * 10,
+        wave: 1.1,
+        drift: 46,
+        seed: Math.random() * 8,
+        age: 0,
+        shoot: 0.45,
+      });
+      return;
+    }
+    if (roll > 0.68) {
+      enemies.push({
+        type: "rock",
+        x,
+        baseX: x,
+        y: -34,
+        radius: randInt(18, 27),
+        hp: 2,
+        points: 90,
+        vy: 92 + difficulty * 32,
+        wave: 0.7,
+        drift: 18,
+        seed: Math.random() * 8,
+        age: 0,
+        shoot: 99,
+      });
+      return;
+    }
+    enemies.push({
+      type: roll > 0.44 ? "zig" : "scout",
+      x,
+      baseX: x,
+      y: -38,
+      radius: roll > 0.44 ? 23 : 20,
+      hp: roll > 0.44 ? 2 : 1,
+      points: roll > 0.44 ? 150 : 110,
+      vy: roll > 0.44 ? 104 + difficulty * 28 : 126 + difficulty * 32,
+      wave: roll > 0.44 ? 3.2 : 1.4,
+      drift: roll > 0.44 ? 46 : 18,
+      seed: Math.random() * 8,
+      age: 0,
+      shoot: roll > 0.72 ? 1.1 : 99,
+    });
+  }
+
+  function handleCollisions() {
+    bullets.forEach((bullet) => {
+      if (bullet.hit) return;
+      enemies.forEach((enemy) => {
+        if (enemy.hp <= 0 || bullet.hit) return;
+        if (distance(bullet.x, bullet.y, enemy.x, enemy.y) < bullet.radius + enemy.radius * 0.76) {
+          bullet.hit = true;
+          enemy.hp -= bullet.power;
+          particles.push(...burst(bullet.x, bullet.y, "#c78031", 4));
+          if (enemy.hp <= 0) destroyEnemy(enemy);
+        }
+      });
+    });
+
+    if (player.invulnerable <= 0) {
+      for (const enemy of enemies) {
+        if (enemy.hp > 0 && distance(player.x, player.y, enemy.x, enemy.y) < player.radius + enemy.radius * 0.58) {
+          enemy.hp = 0;
+          destroyEnemy(enemy, false);
+          hitPlayer();
+          break;
+        }
+      }
+    }
+
+    if (player.invulnerable <= 0) {
+      for (const bullet of enemyBullets) {
+        if (!bullet.hit && distance(player.x, player.y, bullet.x, bullet.y) < player.radius + bullet.radius) {
+          bullet.hit = true;
+          hitPlayer();
+          break;
+        }
+      }
+    }
+
+    bullets = bullets.filter((bullet) => !bullet.hit);
+    enemyBullets = enemyBullets.filter((bullet) => !bullet.hit);
+  }
+
+  function destroyEnemy(enemy, award = true) {
+    if (award) {
+      score += enemy.points;
+      kills += 1;
+      if (kills % 8 === 0) {
+        save.coins += 8;
+        persist();
+      }
+    }
+    particles.push(...burst(enemy.x, enemy.y, enemy.type === "rock" ? "#b7c1c1" : "#4f6fba", enemy.type === "carrier" ? 26 : 12));
+  }
+
+  function hitPlayer() {
+    lives -= 1;
+    player.invulnerable = 1.5;
+    particles.push(...burst(player.x, player.y, "#e65b5b", 18));
+    enemyBullets = enemyBullets.filter((bullet) => bullet.y < player.y - 80);
+    if (lives <= 0) {
+      lives = 0;
+      updateHud();
+      finishRun();
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    drawBackdrop();
+    enemies.forEach(drawEnemy);
+    bullets.forEach(drawPlayerBullet);
+    enemyBullets.forEach(drawEnemyBullet);
+    particles.forEach(drawParticle);
+    drawPlayer();
+  }
+
+  function drawBackdrop() {
+    ctx.fillStyle = "#c9d0d0";
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = "rgba(99, 111, 114, 0.22)";
+    ctx.lineWidth = 1;
+    backdrop.forEach((item) => {
+      if (item.kind === "rock") {
+        drawSoftRock(item.x, item.y, item.r, item.seed);
+      } else {
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, item.r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    });
+  }
+
+  function drawPlayer() {
+    ctx.save();
+    ctx.globalAlpha = player.invulnerable > 0 && Math.floor(performance.now() / 110) % 2 === 0 ? 0.45 : 1;
+    drawPlane(player.x, player.y, 38, -1, "#eef3f3", "#111");
+    ctx.restore();
+  }
+
+  function drawEnemy(enemy) {
+    if (enemy.type === "rock") {
+      drawAsteroid(enemy.x, enemy.y, enemy.radius, enemy.seed);
+      return;
+    }
+    if (enemy.type === "carrier") {
+      drawCarrier(enemy.x, enemy.y, enemy.radius);
+      return;
+    }
+    drawPlane(enemy.x, enemy.y, enemy.radius, 1, enemy.type === "zig" ? "#e6eeee" : "#f4f4ef", "#1a1a1a");
+  }
+
+  function drawPlane(x, y, size, direction, fill, stroke) {
+    ctx.save();
+    ctx.translate(x, y);
+    if (direction > 0) ctx.rotate(Math.PI);
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = Math.max(2, size * 0.08);
+    ctx.beginPath();
+    ctx.moveTo(0, -size);
+    ctx.lineTo(size * 0.25, size * 0.1);
+    ctx.lineTo(size * 0.78, size * 0.36);
+    ctx.lineTo(size * 0.31, size * 0.5);
+    ctx.lineTo(size * 0.16, size * 0.86);
+    ctx.lineTo(0, size * 0.62);
+    ctx.lineTo(-size * 0.16, size * 0.86);
+    ctx.lineTo(-size * 0.31, size * 0.5);
+    ctx.lineTo(-size * 0.78, size * 0.36);
+    ctx.lineTo(-size * 0.25, size * 0.1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, -size * 0.62);
+    ctx.lineTo(0, size * 0.54);
+    ctx.moveTo(-size * 0.28, size * 0.18);
+    ctx.lineTo(size * 0.28, size * 0.18);
+    ctx.stroke();
+    ctx.fillStyle = "#d7e1e1";
+    ctx.fillRect(-size * 0.16, -size * 0.08, size * 0.32, size * 0.38);
+    ctx.strokeRect(-size * 0.16, -size * 0.08, size * 0.32, size * 0.38);
+    ctx.restore();
+  }
+
+  function drawCarrier(x, y, size) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.fillStyle = "#d6dddd";
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, size * 0.92);
+    ctx.lineTo(size * 0.78, -size * 0.42);
+    ctx.lineTo(size * 0.32, -size * 0.72);
+    ctx.lineTo(size * 0.16, -size * 0.15);
+    ctx.lineTo(-size * 0.16, -size * 0.15);
+    ctx.lineTo(-size * 0.32, -size * 0.72);
+    ctx.lineTo(-size * 0.78, -size * 0.42);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#edf2f2";
+    ctx.fillRect(-size * 0.24, -size * 0.2, size * 0.48, size * 0.64);
+    ctx.strokeRect(-size * 0.24, -size * 0.2, size * 0.48, size * 0.64);
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.54, -size * 0.2);
+    ctx.lineTo(size * 0.54, -size * 0.2);
+    ctx.moveTo(-size * 0.42, size * 0.2);
+    ctx.lineTo(size * 0.42, size * 0.2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawAsteroid(x, y, radius, seed) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(seed);
+    ctx.fillStyle = "#e0e6e4";
+    ctx.strokeStyle = "#697373";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i += 1) {
+      const angle = (Math.PI * 2 * i) / 10;
+      const r = radius * (0.76 + Math.sin(seed + i * 1.7) * 0.16);
+      const px = Math.cos(angle) * r;
+      const py = Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawSoftRock(x, y, radius, seed) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalAlpha = 0.32;
+    ctx.strokeStyle = "#8f9a9a";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < 12; i += 1) {
+      const angle = (Math.PI * 2 * i) / 12;
+      const r = radius * (0.74 + Math.sin(seed + i) * 0.12);
+      const px = Math.cos(angle) * r;
+      const py = Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPlayerBullet(bullet) {
+    ctx.save();
+    ctx.strokeStyle = "#b46a25";
+    ctx.fillStyle = "#cf8836";
+    ctx.lineWidth = 2;
+    roundRect(ctx, bullet.x - 3, bullet.y - 12, 6, 20, 3);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawEnemyBullet(bullet) {
+    ctx.save();
+    ctx.fillStyle = "#646be8";
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawParticle(particle) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, particle.life / particle.maxLife);
+    ctx.fillStyle = particle.color;
+    ctx.beginPath();
+    ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function burst(x, y, color, count) {
+    return Array.from({ length: count }, () => {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = randInt(50, 190);
+      const life = Math.random() * 0.35 + 0.35;
+      return {
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: Math.random() * 3 + 2,
+        color,
+        life,
+        maxLife: life,
+      };
+    });
+  }
+
+  function onPointerDown(event) {
+    if (!running) return;
+    event.preventDefault();
+    pointer.active = true;
+    canvas.setPointerCapture?.(event.pointerId);
+    movePlayerTo(event);
+  }
+
+  function onPointerMove(event) {
+    if (!pointer.active || !running) return;
+    event.preventDefault();
+    movePlayerTo(event);
+  }
+
+  function onPointerUp(event) {
+    pointer.active = false;
+    canvas.releasePointerCapture?.(event.pointerId);
+  }
+
+  function movePlayerTo(event) {
+    const rect = canvas.getBoundingClientRect();
+    player.x = clamp(event.clientX - rect.left, 32, width - 32);
+    player.y = clamp(event.clientY - rect.top - 44, 92, height - 54);
+  }
+
+  const resizeObserver = "ResizeObserver" in window ? new ResizeObserver(resize) : null;
+  resizeObserver?.observe(root);
+  window.addEventListener("resize", resize);
+  canvas.addEventListener("pointerdown", onPointerDown, { passive: false });
+  canvas.addEventListener("pointermove", onPointerMove, { passive: false });
+  canvas.addEventListener("pointerup", onPointerUp);
+  canvas.addEventListener("pointercancel", onPointerUp);
+
+  resize();
+  resetRun();
+  setOverlay("准备起飞", "拖动飞机移动，自动射击远处飞来的敌机和陨石。右上角是当前生命。", [
+    { label: "开始", primary: true, onClick: start },
+    { label: "返回首页", onClick: backHome },
+  ]);
+
+  return {
+    restart,
+    destroy() {
+      running = false;
+      window.cancelAnimationFrame(raf);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", resize);
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", onPointerUp);
+      canvas.removeEventListener("pointercancel", onPointerUp);
+    },
+  };
+}
+
 function randomFrom(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
@@ -1518,6 +2215,29 @@ function sameCounts(left, right) {
   left.forEach((entry) => counts.set(entry, (counts.get(entry) || 0) + 1));
   right.forEach((entry) => counts.set(entry, (counts.get(entry) || 0) - 1));
   return [...counts.values()].every((value) => value === 0);
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function distance(x1, y1, x2, y2) {
+  return Math.hypot(x1 - x2, y1 - y2);
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
 }
 
 function randInt(min, max) {

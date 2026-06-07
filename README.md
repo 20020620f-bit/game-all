@@ -13,6 +13,7 @@
 - 奶茶店
 - 花店
 - 摆摊店
+- 纸飞机射击
 
 ## 玩法参考
 
@@ -22,6 +23,12 @@
 - `DaJoker29/cafe-sim`：咖啡店模拟方向，许可证为 GPLv2，未直接并入代码
 - `jaidelikescode/MatchaMother`：顾客点单、配方制作、连击奖励的浏览器玩法
 - `EduardoFontes123/capybara-bubble-tea-catcher`：奶茶题材轻小游戏方向
+
+新增飞机射击玩法前检查过这些 GitHub 项目：
+
+- `Jafnee/Generic-Space-Shooter`：HTML5 Canvas 横版射击游戏，MIT 许可证，代码结构和 Canvas 循环可参考
+- `robertooya/sky-defender`：复古飞机射击方向，未看到明确许可证，未直接并入代码
+- `rishimadhok/Space-Shooter-Game`：轻量浏览器射击方向，未看到明确许可证，未直接并入代码
 
 未直接复制第三方代码；当前实现按本项目现有结构重写，避免许可证和依赖混入。
 
@@ -55,4 +62,4 @@ http://localhost:5173/
 powershell -ExecutionPolicy Bypass -File scripts\smoke-test.ps1
 ```
 
-烟测会用 390x844 手机视口检查首页、6 个小游戏入口、本地存档和横向滚动。
+烟测会用 390x844 手机视口检查首页、10 个小游戏入口、本地存档和横向滚动。
