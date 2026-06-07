@@ -842,6 +842,616 @@ h3 {
   opacity: 0.45;
 }
 
+.shop-scene {
+  display: grid;
+  gap: 14px;
+  min-height: 520px;
+}
+
+.milk-tea-scene {
+  grid-template-columns: minmax(230px, 0.95fr) minmax(260px, 1.1fr);
+  grid-template-areas:
+    "customer counter"
+    "shelf shelf";
+}
+
+.flower-scene {
+  grid-template-columns: minmax(230px, 0.9fr) minmax(280px, 1.1fr);
+  grid-template-areas:
+    "customer workbench"
+    "shelf workbench";
+}
+
+.market-scene {
+  grid-template-columns: minmax(280px, 1.15fr) minmax(230px, 0.85fr);
+  grid-template-areas: "market shelf";
+}
+
+.scene-customer,
+.tea-counter,
+.flower-workbench,
+.market-stage,
+.scene-shelf {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: none;
+}
+
+.scene-customer {
+  grid-area: customer;
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  background: linear-gradient(135deg, #fff7f8, #f0fbf8);
+}
+
+.customer-avatar {
+  display: grid;
+  place-items: center;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 2.15rem;
+  box-shadow: inset 0 -8px 0 rgba(244, 77, 97, 0.08);
+}
+
+.customer-bubble h3 {
+  margin-bottom: 5px;
+}
+
+.customer-bubble p {
+  margin-bottom: 8px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.patience-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #efeaf0;
+}
+
+.patience-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--mint), var(--lemon));
+}
+
+.tea-counter {
+  grid-area: counter;
+  position: relative;
+  display: grid;
+  grid-template-columns: 95px 1fr;
+  gap: 12px;
+  align-items: center;
+  min-height: 286px;
+  padding: 16px;
+  background:
+    linear-gradient(180deg, #e8f4ff 0 42%, #f7e8dc 42% 100%);
+  overflow: hidden;
+}
+
+.tea-counter::after,
+.flower-workbench::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 72px;
+  background: rgba(217, 164, 111, 0.34);
+}
+
+.machine {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  height: 160px;
+  border-radius: 18px 18px 8px 8px;
+  background: #f44d61;
+  color: #fff;
+  box-shadow: inset 0 -16px 0 rgba(0, 0, 0, 0.1);
+}
+
+.machine span {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.machine strong {
+  font-size: 0.78rem;
+}
+
+.cup-station {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.visual-cup {
+  position: relative;
+  width: 124px;
+  height: 166px;
+  overflow: hidden;
+  border: 4px solid rgba(39, 35, 42, 0.72);
+  border-top-width: 8px;
+  border-radius: 14px 14px 34px 34px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.cup-lid {
+  width: 118px;
+  height: 18px;
+  border-radius: 999px;
+  background: #3b3540;
+  transform: translateY(13px);
+  z-index: 2;
+}
+
+.cup-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.tea-fill {
+  height: 72%;
+  background: var(--tea);
+}
+
+.milk-fill {
+  height: 48%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--milk), transparent 26%), var(--milk));
+  opacity: 0.92;
+}
+
+.cup-sugar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--sugar);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.cup-toppings i {
+  position: absolute;
+  z-index: 3;
+  color: #2f2430;
+  font-style: normal;
+  font-size: 0.82rem;
+}
+
+.cup-toppings i:nth-child(1) { left: 18%; bottom: 10%; }
+.cup-toppings i:nth-child(2) { left: 38%; bottom: 8%; }
+.cup-toppings i:nth-child(3) { left: 58%; bottom: 12%; }
+.cup-toppings i:nth-child(4) { left: 28%; bottom: 20%; }
+.cup-toppings i:nth-child(5) { left: 50%; bottom: 22%; }
+.cup-toppings i:nth-child(6) { left: 70%; bottom: 20%; }
+.cup-toppings i:nth-child(7) { left: 22%; bottom: 32%; }
+.cup-toppings i:nth-child(8) { left: 45%; bottom: 34%; }
+.cup-toppings i:nth-child(9) { left: 64%; bottom: 32%; }
+
+.cup-label,
+.bouquet-label {
+  min-height: 32px;
+  max-width: 230px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.serve-button {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+}
+
+.scene-shelf {
+  grid-area: shelf;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 12px;
+  background: linear-gradient(180deg, #fff, #f8fbff);
+}
+
+.scene-option-group h3 {
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+.scene-option-grid {
+  display: grid;
+  gap: 7px;
+}
+
+.scene-choice {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  min-height: 42px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.scene-choice span {
+  font-weight: 900;
+  text-align: center;
+}
+
+.scene-choice strong {
+  overflow-wrap: anywhere;
+}
+
+.scene-choice.is-active {
+  border-color: var(--cherry);
+  background: #fff0f3;
+  box-shadow: 0 0 0 3px rgba(244, 77, 97, 0.13);
+}
+
+.shop-scene.is-wrong .tea-counter,
+.shop-scene.is-wrong .flower-workbench {
+  animation: shake 260ms ease;
+}
+
+.shop-scene.is-success .visual-cup,
+.shop-scene.is-success .bouquet-vase {
+  animation: pop 360ms ease;
+}
+
+.flower-workbench {
+  grid-area: workbench;
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 12px;
+  min-height: 430px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, #e7f4ff 0 38%, #fff2e7 38% 100%);
+  overflow: hidden;
+}
+
+.flower-buckets {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.flower-bucket {
+  display: grid;
+  place-items: center;
+  min-height: 64px;
+  border: 1px solid var(--line);
+  border-radius: 8px 8px 18px 18px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.flower-bucket span {
+  font-size: 1.45rem;
+}
+
+.flower-bucket strong {
+  font-size: 0.7rem;
+}
+
+.bouquet-table {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-height: 230px;
+}
+
+.bouquet-vase {
+  position: relative;
+  width: 188px;
+  height: 210px;
+}
+
+.bouquet-paper {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  width: 132px;
+  height: 104px;
+  transform: translateX(-50%);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  background: #f4d1d8;
+  opacity: 0.94;
+}
+
+.bouquet-paper.wrap-kraft {
+  background: #c99a66;
+}
+
+.bouquet-paper.wrap-blue {
+  background: #9fc5ff;
+}
+
+.bouquet-paper.wrap-none {
+  background: #ece8e5;
+  opacity: 0.38;
+}
+
+.bouquet-stems {
+  position: absolute;
+  left: 50%;
+  bottom: 62px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  width: 170px;
+  min-height: 128px;
+  transform: translateX(-50%);
+}
+
+.bouquet-stems em {
+  margin-bottom: 45px;
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.bouquet-flower {
+  display: grid;
+  align-items: end;
+  height: 128px;
+  transform: rotate(var(--tilt));
+  transform-origin: bottom center;
+}
+
+.bouquet-flower::after {
+  content: "";
+  display: block;
+  width: 5px;
+  height: 86px;
+  margin: -9px auto 0;
+  border-radius: 999px;
+  background: #4da66b;
+}
+
+.bouquet-flower i {
+  position: relative;
+  z-index: 2;
+  font-style: normal;
+  font-size: 2.1rem;
+}
+
+.wrap-shelf {
+  grid-template-columns: 1fr;
+}
+
+.market-stage {
+  grid-area: market;
+  position: relative;
+  min-height: 470px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #2b335e 0 42%, #56517a 42% 58%, #f4ddbe 58% 100%);
+}
+
+.market-sky {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 48%;
+}
+
+.weather-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  font-weight: 900;
+}
+
+.lantern {
+  position: absolute;
+  top: 22px;
+  width: 30px;
+  height: 42px;
+  border-radius: 999px;
+  background: #f44d61;
+  box-shadow: 0 0 24px rgba(244, 77, 97, 0.75);
+}
+
+.lantern::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -18px;
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.lantern.one {
+  left: 18%;
+}
+
+.lantern.two {
+  left: 39%;
+  top: 48px;
+  background: #f4c542;
+  box-shadow: 0 0 24px rgba(244, 197, 66, 0.72);
+}
+
+.market-customers {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  bottom: 122px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.market-person {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 70px;
+  border-radius: 999px 999px 12px 12px;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 1.8rem;
+  animation: bob 1100ms ease-in-out infinite;
+}
+
+.person-1,
+.person-3 {
+  animation-delay: 160ms;
+}
+
+.stall-cart {
+  position: absolute;
+  left: 50%;
+  bottom: 46px;
+  width: min(280px, 78%);
+  height: 238px;
+  transform: translateX(-50%);
+}
+
+.stall-awning {
+  height: 52px;
+  border-radius: 14px 14px 6px 6px;
+  background: repeating-linear-gradient(90deg, #f44d61 0 34px, #fff 34px 68px);
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.08);
+}
+
+.price-sign {
+  position: absolute;
+  right: 18px;
+  top: 70px;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 42px;
+  border: 3px solid #2b252a;
+  border-radius: 8px;
+  background: #fff7cb;
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.goods-tray {
+  position: absolute;
+  left: 18px;
+  right: 92px;
+  top: 78px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 76px;
+  padding: 9px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.goods-tray span {
+  font-size: 1.15rem;
+}
+
+.stall-table {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 42px;
+  height: 78px;
+  border-radius: 8px;
+  background: #d9a46f;
+}
+
+.stall-wheels {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.stall-wheels span {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #2b252a;
+}
+
+.market-result {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.market-result span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.stall-controls {
+  grid-template-columns: 1fr;
+}
+
+@keyframes shake {
+  0%,
+  100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes pop {
+  0% { transform: scale(0.96); }
+  55% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@keyframes bob {
+  0%,
+  100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
 .find-scenes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1283,9 +1893,32 @@ h3 {
   .merge-layout,
   .sort-layout,
   .shop-layout,
+  .milk-tea-scene,
+  .flower-scene,
+  .market-scene,
   .dress-layout,
   .room-layout {
     grid-template-columns: 1fr;
+  }
+
+  .milk-tea-scene {
+    grid-template-areas:
+      "customer"
+      "counter"
+      "shelf";
+  }
+
+  .flower-scene {
+    grid-template-areas:
+      "customer"
+      "workbench"
+      "shelf";
+  }
+
+  .market-scene {
+    grid-template-areas:
+      "market"
+      "shelf";
   }
 
   .profile-panel {
@@ -1448,6 +2081,76 @@ h3 {
 
   .option-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scene-shelf {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .flower-buckets {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .flower-workbench {
+    min-height: 350px;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .flower-bucket {
+    min-height: 54px;
+  }
+
+  .bouquet-table {
+    min-height: 150px;
+  }
+
+  .bouquet-vase {
+    width: 142px;
+    height: 154px;
+  }
+
+  .bouquet-paper {
+    bottom: 8px;
+    width: 98px;
+    height: 76px;
+  }
+
+  .bouquet-stems {
+    bottom: 42px;
+    width: 132px;
+    min-height: 90px;
+  }
+
+  .bouquet-flower {
+    height: 90px;
+  }
+
+  .bouquet-flower::after {
+    height: 58px;
+  }
+
+  .bouquet-flower i {
+    font-size: 1.62rem;
+  }
+
+  .tea-counter {
+    grid-template-columns: 82px 1fr;
+    min-height: 268px;
+    padding: 12px;
+  }
+
+  .machine {
+    height: 138px;
+  }
+
+  .visual-cup {
+    width: 108px;
+    height: 148px;
+  }
+
+  .market-stage {
+    min-height: 430px;
   }
 
   .stall-preview {

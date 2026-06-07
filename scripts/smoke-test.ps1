@@ -95,9 +95,9 @@ try {
     find: ".find-scenes .scene",
     dress: ".avatar-stage .avatar",
     room: ".room-stage .room-desk",
-    milkTea: ".shop-layout #serveMilkTea",
-    flowerShop: ".shop-layout #serveBouquet",
-    stall: ".shop-layout #startStallDay"
+    milkTea: ".milk-tea-scene #serveMilkTea",
+    flowerShop: ".flower-scene #serveBouquet",
+    stall: ".market-scene #startStallDay"
   };
   for (const [id, selector] of Object.entries(targets)) {
     startGame(id);

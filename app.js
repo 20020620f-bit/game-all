@@ -310,6 +310,30 @@ const milkTeaOrders = [
   order("燕麦珍珠乌龙", "乌龙", "燕麦奶", "半糖", "珍珠", "🧋"),
 ];
 
+const milkTeaVisuals = {
+  tea: {
+    红茶: "#8d4b32",
+    绿茶: "#87b86c",
+    乌龙: "#b07141",
+  },
+  milk: {
+    牛奶: "#fff1d7",
+    燕麦奶: "#ead0a8",
+    厚乳: "#ffe4bd",
+  },
+  sugar: {
+    三分糖: "31%",
+    半糖: "50%",
+    七分糖: "70%",
+  },
+  topping: {
+    珍珠: "●",
+    布丁: "■",
+    椰果: "◆",
+  },
+  customers: ["👩‍💼", "👧", "👩", "🧑‍🎨", "👱‍♀️"],
+};
+
 const flowerOptions = {
   flower: ["玫瑰", "郁金香", "雏菊", "向日葵", "满天星"],
   wrap: ["粉纸", "牛皮纸", "蓝丝带"],
@@ -340,6 +364,12 @@ const stallWeather = [
   { name: "小雨", emoji: "🌧️", traffic: 0.72 },
   { name: "晚风", emoji: "🌙", traffic: 1.22 },
 ];
+
+const wrapClass = {
+  粉纸: "wrap-pink",
+  牛皮纸: "wrap-kraft",
+  蓝丝带: "wrap-blue",
+};
 
 function order(name, tea, milk, sugar, topping, icon) {
   return { name, tea, milk, sugar, topping, icon };
@@ -1022,15 +1052,20 @@ function renderMilkTea(reset = false) {
       served: 0,
       combo: 0,
       mistakes: 0,
+      customer: randomFrom(milkTeaVisuals.customers),
+      flash: "",
     };
   }
   toolbarButton("换顾客", () => {
     transient.milkTea.order = randomFrom(milkTeaOrders);
     transient.milkTea.current = { tea: null, milk: null, sugar: null, topping: null };
+    transient.milkTea.customer = randomFrom(milkTeaVisuals.customers);
+    transient.milkTea.flash = "";
     render();
   });
   toolbarButton("新一轮", () => renderMilkTea(true));
   const state = transient.milkTea;
+  const patience = Math.max(24, 100 - state.mistakes * 22);
   renderStats([
     { label: "本轮", value: `${state.served}/5` },
     { label: "连击", value: state.combo },
@@ -1039,35 +1074,48 @@ function renderMilkTea(reset = false) {
   ]);
   const surface = document.querySelector("#gameSurface");
   surface.innerHTML = `
-    <div class="shop-layout">
-      <section class="order-ticket">
-        <div class="ticket-icon">${state.order.icon}</div>
-        <p class="eyebrow">Order</p>
-        <h3>${state.order.name}</h3>
-        <p>${state.order.tea} · ${state.order.milk} · ${state.order.sugar} · ${state.order.topping}</p>
-        <div class="cup-preview">${milkTeaPreview(state.current)}</div>
-        <button class="primary-button" type="button" id="serveMilkTea">出杯</button>
+    <div class="shop-scene milk-tea-scene ${state.flash ? `is-${state.flash}` : ""}">
+      <section class="scene-customer">
+        <div class="customer-avatar">${state.customer}</div>
+        <div class="customer-bubble">
+          <p class="eyebrow">Order</p>
+          <h3>${state.order.name}</h3>
+          <p>${state.order.tea} · ${state.order.milk} · ${state.order.sugar} · ${state.order.topping}</p>
+          <div class="patience-bar"><span style="width:${patience}%"></span></div>
+        </div>
       </section>
-      <section class="prep-panel"></section>
+      <section class="tea-counter">
+        <div class="machine">
+          <span></span>
+          <strong>TEA</strong>
+        </div>
+        ${milkTeaCupVisual(state.current)}
+        <button class="primary-button serve-button" type="button" id="serveMilkTea">出杯</button>
+      </section>
+      <section class="scene-shelf"></section>
     </div>
   `;
-  const panel = surface.querySelector(".prep-panel");
-  renderOptionGroup(panel, "茶底", milkTeaOptions.tea, state.current.tea, (value) => {
+  const panel = surface.querySelector(".scene-shelf");
+  renderSceneOptionGroup(panel, "茶底", milkTeaOptions.tea, state.current.tea, (value) => {
     state.current.tea = value;
+    state.flash = "";
     render();
-  });
-  renderOptionGroup(panel, "奶底", milkTeaOptions.milk, state.current.milk, (value) => {
+  }, { 红茶: "🫖", 绿茶: "🍵", 乌龙: "🥃" });
+  renderSceneOptionGroup(panel, "奶底", milkTeaOptions.milk, state.current.milk, (value) => {
     state.current.milk = value;
+    state.flash = "";
     render();
-  });
-  renderOptionGroup(panel, "甜度", milkTeaOptions.sugar, state.current.sugar, (value) => {
+  }, { 牛奶: "🥛", 燕麦奶: "🌾", 厚乳: "🍦" });
+  renderSceneOptionGroup(panel, "甜度", milkTeaOptions.sugar, state.current.sugar, (value) => {
     state.current.sugar = value;
+    state.flash = "";
     render();
-  });
-  renderOptionGroup(panel, "小料", milkTeaOptions.topping, state.current.topping, (value) => {
+  }, { 三分糖: "⅓", 半糖: "½", 七分糖: "⅔" });
+  renderSceneOptionGroup(panel, "小料", milkTeaOptions.topping, state.current.topping, (value) => {
     state.current.topping = value;
+    state.flash = "";
     render();
-  });
+  }, { 珍珠: "●", 布丁: "■", 椰果: "◆" });
   surface.querySelector("#serveMilkTea").addEventListener("click", serveMilkTea);
 }
 
@@ -1086,6 +1134,7 @@ function serveMilkTea() {
   if (!ok) {
     state.combo = 0;
     state.mistakes += 1;
+    state.flash = "wrong";
     toast("顾客说味道不对");
     render();
     return;
@@ -1103,6 +1152,8 @@ function serveMilkTea() {
   }
   state.order = nextDifferent(milkTeaOrders, state.order);
   state.current = { tea: null, milk: null, sugar: null, topping: null };
+  state.customer = randomFrom(milkTeaVisuals.customers);
+  state.flash = "success";
   persist();
   render();
 }
@@ -1112,6 +1163,26 @@ function milkTeaPreview(current) {
   return parts.length ? parts.join(" + ") : "空杯";
 }
 
+function milkTeaCupVisual(current) {
+  const tea = current.tea ? milkTeaVisuals.tea[current.tea] : "#f8f3ef";
+  const milk = current.milk ? milkTeaVisuals.milk[current.milk] : "transparent";
+  const sugar = current.sugar ? milkTeaVisuals.sugar[current.sugar] : "0%";
+  const topping = current.topping ? milkTeaVisuals.topping[current.topping] : "";
+  const bubbles = Array.from({ length: current.topping ? 9 : 0 }, (_, index) => `<i style="--i:${index}">${topping}</i>`).join("");
+  return `
+    <div class="cup-station">
+      <div class="cup-lid"></div>
+      <div class="visual-cup" style="--tea:${tea};--milk:${milk};--sugar:${sugar}">
+        <div class="cup-fill tea-fill"></div>
+        <div class="cup-fill milk-fill"></div>
+        <div class="cup-sugar"></div>
+        <div class="cup-toppings">${bubbles}</div>
+      </div>
+      <div class="cup-label">${milkTeaPreview(current)}</div>
+    </div>
+  `;
+}
+
 function renderFlowerShop(reset = false) {
   if (!transient.flowerShop || reset) {
     transient.flowerShop = {
@@ -1119,10 +1190,12 @@ function renderFlowerShop(reset = false) {
       current: { flowers: [], wrap: null },
       served: 0,
       streak: 0,
+      flash: "",
     };
   }
   toolbarButton("清空花束", () => {
     transient.flowerShop.current = { flowers: [], wrap: null };
+    transient.flowerShop.flash = "";
     render();
   });
   toolbarButton("新订单", () => renderFlowerShop(true));
@@ -1135,41 +1208,49 @@ function renderFlowerShop(reset = false) {
   ]);
   const surface = document.querySelector("#gameSurface");
   surface.innerHTML = `
-    <div class="shop-layout">
-      <section class="order-ticket">
-        <div class="ticket-icon">💐</div>
-        <p class="eyebrow">Bouquet</p>
-        <h3>${state.order.name}</h3>
-        <p>${state.order.flowers.join(" · ")} · ${state.order.wrap}</p>
-        <div class="bouquet-preview">${flowerPreview(state.current)}</div>
-        <button class="primary-button" type="button" id="serveBouquet">包好</button>
+    <div class="shop-scene flower-scene ${state.flash ? `is-${state.flash}` : ""}">
+      <section class="scene-customer florist-order">
+        <div class="customer-avatar">👩‍🌾</div>
+        <div class="customer-bubble">
+          <p class="eyebrow">Bouquet</p>
+          <h3>${state.order.name}</h3>
+          <p>${state.order.flowers.map((entry) => `${flowerEmoji[entry]}${entry}`).join(" · ")} · ${flowerEmoji[state.order.wrap]}${state.order.wrap}</p>
+        </div>
       </section>
-      <section class="prep-panel"></section>
+      <section class="flower-workbench">
+        <div class="flower-buckets"></div>
+        ${flowerBouquetVisual(state.current)}
+        <button class="primary-button serve-button" type="button" id="serveBouquet">包好</button>
+      </section>
+      <section class="scene-shelf wrap-shelf"></section>
     </div>
   `;
-  const panel = surface.querySelector(".prep-panel");
-  renderOptionGroup(
-    panel,
-    "花材",
-    flowerOptions.flower,
-    "",
-    (value) => {
+  const buckets = surface.querySelector(".flower-buckets");
+  flowerOptions.flower.forEach((value) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "flower-bucket";
+    button.innerHTML = `<span>${flowerEmoji[value]}</span><strong>${value}</strong>`;
+    button.addEventListener("click", () => {
       if (state.current.flowers.length >= 3) {
         toast("一束最多 3 枝");
         return;
       }
       state.current.flowers.push(value);
+      state.flash = "";
       render();
-    },
-    flowerEmoji,
-  );
-  renderOptionGroup(
+    });
+    buckets.append(button);
+  });
+  const panel = surface.querySelector(".wrap-shelf");
+  renderSceneOptionGroup(
     panel,
-    "包装",
+    "包装纸",
     flowerOptions.wrap,
     state.current.wrap,
     (value) => {
       state.current.wrap = value;
+      state.flash = "";
       render();
     },
     flowerEmoji,
@@ -1186,6 +1267,7 @@ function serveBouquet() {
   const ok = sameCounts(state.current.flowers, state.order.flowers) && state.current.wrap === state.order.wrap;
   if (!ok) {
     state.streak = 0;
+    state.flash = "wrong";
     toast("这束和订单不一样");
     render();
     return;
@@ -1203,6 +1285,7 @@ function serveBouquet() {
   }
   state.order = nextDifferent(flowerOrders, state.order);
   state.current = { flowers: [], wrap: null };
+  state.flash = "success";
   persist();
   render();
 }
@@ -1213,12 +1296,35 @@ function flowerPreview(current) {
   return flowers ? `${flowers} ${wrap}` : "空花束";
 }
 
+function flowerBouquetVisual(current) {
+  const flowers = current.flowers
+    .map(
+      (entry, index) => `
+        <span class="bouquet-flower flower-${index}" style="--tilt:${(index - 1) * 12}deg">
+          <i>${flowerEmoji[entry]}</i>
+        </span>
+      `,
+    )
+    .join("");
+  const wrap = current.wrap ? wrapClass[current.wrap] : "wrap-none";
+  return `
+    <div class="bouquet-table">
+      <div class="bouquet-vase">
+        <div class="bouquet-paper ${wrap}"></div>
+        <div class="bouquet-stems">${flowers || "<em>选择 3 枝花</em>"}</div>
+      </div>
+      <div class="bouquet-label">${flowerPreview(current)}</div>
+    </div>
+  `;
+}
+
 function renderStall(reset = false) {
   if (!transient.stall || reset) {
-    transient.stall = { stock: 24, price: 9, decor: 1 };
+    transient.stall = { stock: 24, price: 9, decor: 1, result: null };
   }
   toolbarButton("重置方案", () => renderStall(true));
   const state = transient.stall;
+  const result = state.result;
   renderStats([
     { label: "天数", value: save.games.stall.day },
     { label: "口碑", value: save.games.stall.reputation.toFixed(1) },
@@ -1227,23 +1333,33 @@ function renderStall(reset = false) {
   ]);
   const surface = document.querySelector("#gameSurface");
   surface.innerHTML = `
-    <div class="shop-layout stall-layout">
-      <section class="order-ticket">
-        <div class="ticket-icon">🛍️</div>
-        <p class="eyebrow">Night Market</p>
-        <h3>手作小摊</h3>
-        <p>${save.games.stall.last}</p>
-        <div class="stall-preview">
-          <span>库存 ${state.stock}</span>
-          <span>单价 ${state.price}</span>
-          <span>布置 ${state.decor}</span>
+    <div class="shop-scene market-scene">
+      <section class="market-stage ${result ? "has-result" : ""}">
+        <div class="market-sky">
+          <span class="lantern one"></span>
+          <span class="lantern two"></span>
+          <span class="weather-badge">${result ? `${result.weather.emoji}${result.weather.name}` : "🌙夜市"}</span>
         </div>
-        <button class="primary-button" type="button" id="startStallDay">开张</button>
+        <div class="market-customers">
+          ${stallCustomerVisual(result)}
+        </div>
+        <div class="stall-cart" style="--decor:${state.decor}">
+          <div class="stall-awning"></div>
+          <div class="price-sign">¥${state.price}</div>
+          <div class="goods-tray">${stallGoodsVisual(state.stock)}</div>
+          <div class="stall-table"></div>
+          <div class="stall-wheels"><span></span><span></span></div>
+        </div>
+        <div class="market-result">
+          <strong>${result ? `卖出 ${result.sold}/${result.stock}` : "还没开张"}</strong>
+          <span>${result ? `利润 ${result.profit}` : "调好库存、单价和布置后开张"}</span>
+        </div>
       </section>
-      <section class="prep-panel">
+      <section class="scene-shelf stall-controls">
         ${stallStepper("进货", "stock", state.stock, 6, 60, 3)}
         ${stallStepper("单价", "price", state.price, 5, 18, 1)}
         ${stallStepper("布置", "decor", state.decor, 0, 5, 1)}
+        <button class="primary-button serve-button" type="button" id="startStallDay">开张</button>
       </section>
     </div>
   `;
@@ -1276,6 +1392,7 @@ function adjustStall(field, step) {
   };
   const [min, max] = limits[field];
   transient.stall[field] = Math.max(min, Math.min(max, transient.stall[field] + step));
+  transient.stall.result = null;
   render();
 }
 
@@ -1300,9 +1417,20 @@ function startStallDay() {
   const reputationDelta = sellRate > 0.72 && state.price <= 13 ? 0.25 : sellRate < 0.35 ? -0.2 : 0.05;
   save.games.stall.reputation = Math.max(1, Math.min(5, save.games.stall.reputation + reputationDelta));
   save.games.stall.last = `${weather.emoji}${weather.name} 卖出 ${sold}/${state.stock}，利润 ${profit}`;
+  state.result = { weather, sold, stock: state.stock, profit };
   persist();
   toast(profit >= 0 ? `收摊盈利 ${profit}` : `今天亏了 ${Math.abs(profit)}`);
   render();
+}
+
+function stallGoodsVisual(stock) {
+  const count = Math.max(4, Math.min(18, Math.ceil(stock / 3)));
+  return Array.from({ length: count }, (_, index) => `<span style="--i:${index}">${["🧁", "🍡", "🍪", "🎁"][index % 4]}</span>`).join("");
+}
+
+function stallCustomerVisual(result) {
+  const customers = result ? Math.max(1, Math.min(5, Math.ceil(result.sold / 8))) : 2;
+  return Array.from({ length: customers }, (_, index) => `<span class="market-person person-${index}">${["👩", "🧑", "👧", "👱‍♀️", "🧒"][index % 5]}</span>`).join("");
 }
 
 function renderOptionGroup(container, title, options, active, onPick, emojiMap = null) {
@@ -1315,6 +1443,22 @@ function renderOptionGroup(container, title, options, active, onPick, emojiMap =
     button.type = "button";
     button.className = `recipe-button ${active === option ? "is-active" : ""}`;
     button.textContent = emojiMap?.[option] ? `${emojiMap[option]} ${option}` : option;
+    button.addEventListener("click", () => onPick(option));
+    grid.append(button);
+  });
+  container.append(section);
+}
+
+function renderSceneOptionGroup(container, title, options, active, onPick, emojiMap = null) {
+  const section = document.createElement("section");
+  section.className = "scene-option-group";
+  section.innerHTML = `<h3>${title}</h3><div class="scene-option-grid"></div>`;
+  const grid = section.querySelector(".scene-option-grid");
+  options.forEach((option) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `scene-choice ${active === option ? "is-active" : ""}`;
+    button.innerHTML = `<span>${emojiMap?.[option] || ""}</span><strong>${option}</strong>`;
     button.addEventListener("click", () => onPick(option));
     grid.append(button);
   });
