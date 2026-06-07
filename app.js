@@ -3090,6 +3090,24 @@ importFile.addEventListener("change", () => {
   importFile.value = "";
 });
 
+function isEditableTarget(target) {
+  return !!target?.closest?.("input, textarea, select, [contenteditable='true']");
+}
+
+function preventSystemSelection(event) {
+  if (isEditableTarget(event.target)) return;
+  event.preventDefault();
+}
+
+document.addEventListener("contextmenu", preventSystemSelection);
+document.addEventListener("selectstart", preventSystemSelection);
+document.addEventListener("dragstart", preventSystemSelection);
+document.addEventListener("selectionchange", () => {
+  if (isEditableTarget(document.activeElement)) return;
+  const selection = window.getSelection?.();
+  if (selection?.rangeCount) selection.removeAllRanges();
+});
+
 window.addEventListener("keydown", (event) => {
   if (activeGame !== "merge") return;
   const map = {
