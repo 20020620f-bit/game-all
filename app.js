@@ -9,6 +9,14 @@ const exportBtn = document.querySelector("#exportBtn");
 const importBtn = document.querySelector("#importBtn");
 const importFile = document.querySelector("#importFile");
 
+function asset(path) {
+  return `assets/game/${path}.svg`;
+}
+
+function assetImg(path, className = "", alt = "") {
+  return `<img class="${className}" src="${asset(path)}" alt="${alt}" loading="lazy" />`;
+}
+
 const games = [
   {
     id: "pairs",
@@ -331,7 +339,12 @@ const milkTeaVisuals = {
     布丁: "■",
     椰果: "◆",
   },
-  customers: ["👩‍💼", "👧", "👩", "🧑‍🎨", "👱‍♀️"],
+  toppingAsset: {
+    珍珠: "milk-tea/pearl",
+    布丁: "milk-tea/pudding",
+    椰果: "milk-tea/coconut",
+  },
+  customers: ["customers/customer-1", "customers/customer-2", "customers/customer-3"],
 };
 
 const flowerOptions = {
@@ -348,6 +361,14 @@ const flowerEmoji = {
   粉纸: "🎀",
   牛皮纸: "📦",
   蓝丝带: "💙",
+};
+
+const flowerAssets = {
+  玫瑰: "flowers/rose",
+  郁金香: "flowers/tulip",
+  雏菊: "flowers/daisy",
+  向日葵: "flowers/sunflower",
+  满天星: "flowers/baby-breath",
 };
 
 const flowerOrders = [
@@ -370,6 +391,8 @@ const wrapClass = {
   牛皮纸: "wrap-kraft",
   蓝丝带: "wrap-blue",
 };
+
+const stallGoodsAssets = ["stall/cake", "stall/skewer", "stall/cookie", "stall/gift"];
 
 function order(name, tea, milk, sugar, topping, icon) {
   return { name, tea, milk, sugar, topping, icon };
@@ -1076,7 +1099,7 @@ function renderMilkTea(reset = false) {
   surface.innerHTML = `
     <div class="shop-scene milk-tea-scene ${state.flash ? `is-${state.flash}` : ""}">
       <section class="scene-customer">
-        <div class="customer-avatar">${state.customer}</div>
+        <div class="customer-avatar">${assetImg(state.customer, "asset-avatar", "顾客")}</div>
         <div class="customer-bubble">
           <p class="eyebrow">Order</p>
           <h3>${state.order.name}</h3>
@@ -1086,7 +1109,7 @@ function renderMilkTea(reset = false) {
       </section>
       <section class="tea-counter">
         <div class="machine">
-          <span></span>
+          ${assetImg("milk-tea/machine", "machine-asset", "奶茶机")}
           <strong>TEA</strong>
         </div>
         ${milkTeaCupVisual(state.current)}
@@ -1115,7 +1138,11 @@ function renderMilkTea(reset = false) {
     state.current.topping = value;
     state.flash = "";
     render();
-  }, { 珍珠: "●", 布丁: "■", 椰果: "◆" });
+  }, {
+    珍珠: assetImg("milk-tea/pearl", "choice-asset", "珍珠"),
+    布丁: assetImg("milk-tea/pudding", "choice-asset", "布丁"),
+    椰果: assetImg("milk-tea/coconut", "choice-asset", "椰果"),
+  });
   surface.querySelector("#serveMilkTea").addEventListener("click", serveMilkTea);
 }
 
@@ -1167,8 +1194,11 @@ function milkTeaCupVisual(current) {
   const tea = current.tea ? milkTeaVisuals.tea[current.tea] : "#f8f3ef";
   const milk = current.milk ? milkTeaVisuals.milk[current.milk] : "transparent";
   const sugar = current.sugar ? milkTeaVisuals.sugar[current.sugar] : "0%";
-  const topping = current.topping ? milkTeaVisuals.topping[current.topping] : "";
-  const bubbles = Array.from({ length: current.topping ? 9 : 0 }, (_, index) => `<i style="--i:${index}">${topping}</i>`).join("");
+  const toppingAsset = current.topping ? milkTeaVisuals.toppingAsset[current.topping] : "";
+  const bubbles = Array.from(
+    { length: current.topping ? 9 : 0 },
+    (_, index) => `<i style="--i:${index}">${assetImg(toppingAsset, "topping-asset", current.topping)}</i>`,
+  ).join("");
   return `
     <div class="cup-station">
       <div class="cup-lid"></div>
@@ -1210,7 +1240,7 @@ function renderFlowerShop(reset = false) {
   surface.innerHTML = `
     <div class="shop-scene flower-scene ${state.flash ? `is-${state.flash}` : ""}">
       <section class="scene-customer florist-order">
-        <div class="customer-avatar">👩‍🌾</div>
+        <div class="customer-avatar">${assetImg("customers/florist", "asset-avatar", "花店店员")}</div>
         <div class="customer-bubble">
           <p class="eyebrow">Bouquet</p>
           <h3>${state.order.name}</h3>
@@ -1230,7 +1260,7 @@ function renderFlowerShop(reset = false) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "flower-bucket";
-    button.innerHTML = `<span>${flowerEmoji[value]}</span><strong>${value}</strong>`;
+    button.innerHTML = `<span>${assetImg(flowerAssets[value], "flower-asset", value)}</span><strong>${value}</strong>`;
     button.addEventListener("click", () => {
       if (state.current.flowers.length >= 3) {
         toast("一束最多 3 枝");
@@ -1301,7 +1331,7 @@ function flowerBouquetVisual(current) {
     .map(
       (entry, index) => `
         <span class="bouquet-flower flower-${index}" style="--tilt:${(index - 1) * 12}deg">
-          <i>${flowerEmoji[entry]}</i>
+          <i>${assetImg(flowerAssets[entry], "bouquet-asset", entry)}</i>
         </span>
       `,
     )
@@ -1336,14 +1366,15 @@ function renderStall(reset = false) {
     <div class="shop-scene market-scene">
       <section class="market-stage ${result ? "has-result" : ""}">
         <div class="market-sky">
-          <span class="lantern one"></span>
-          <span class="lantern two"></span>
+          <span class="lantern one">${assetImg("stall/lantern-red", "lantern-asset", "灯笼")}</span>
+          <span class="lantern two">${assetImg("stall/lantern-yellow", "lantern-asset", "灯笼")}</span>
           <span class="weather-badge">${result ? `${result.weather.emoji}${result.weather.name}` : "🌙夜市"}</span>
         </div>
         <div class="market-customers">
           ${stallCustomerVisual(result)}
         </div>
         <div class="stall-cart" style="--decor:${state.decor}">
+          ${assetImg("stall/cart", "cart-asset", "摊车")}
           <div class="stall-awning"></div>
           <div class="price-sign">¥${state.price}</div>
           <div class="goods-tray">${stallGoodsVisual(state.stock)}</div>
@@ -1425,12 +1456,18 @@ function startStallDay() {
 
 function stallGoodsVisual(stock) {
   const count = Math.max(4, Math.min(18, Math.ceil(stock / 3)));
-  return Array.from({ length: count }, (_, index) => `<span style="--i:${index}">${["🧁", "🍡", "🍪", "🎁"][index % 4]}</span>`).join("");
+  return Array.from(
+    { length: count },
+    (_, index) => `<span style="--i:${index}">${assetImg(stallGoodsAssets[index % stallGoodsAssets.length], "good-asset", "商品")}</span>`,
+  ).join("");
 }
 
 function stallCustomerVisual(result) {
   const customers = result ? Math.max(1, Math.min(5, Math.ceil(result.sold / 8))) : 2;
-  return Array.from({ length: customers }, (_, index) => `<span class="market-person person-${index}">${["👩", "🧑", "👧", "👱‍♀️", "🧒"][index % 5]}</span>`).join("");
+  return Array.from(
+    { length: customers },
+    (_, index) => `<span class="market-person person-${index}">${assetImg(["customers/customer-1", "customers/customer-2", "customers/customer-3", "customers/shopper"][index % 4], "market-avatar", "顾客")}</span>`,
+  ).join("");
 }
 
 function renderOptionGroup(container, title, options, active, onPick, emojiMap = null) {

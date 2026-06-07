@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-label="stall cart">
+  <rect x="24" y="26" width="192" height="42" rx="12" fill="#f44d61"/>
+  <path d="M24 26h192v42H24z" fill="url(#stripe)"/>
+  <rect x="34" y="88" width="172" height="66" rx="10" fill="#d9a46f"/>
+  <rect x="52" y="72" width="136" height="38" rx="10" fill="#fff"/>
+  <circle cx="76" cy="160" r="14" fill="#2b252a"/>
+  <circle cx="164" cy="160" r="14" fill="#2b252a"/>
+  <defs>
+    <pattern id="stripe" width="48" height="42" patternUnits="userSpaceOnUse">
+      <rect width="24" height="42" fill="#f44d61"/>
+      <rect x="24" width="24" height="42" fill="#fff"/>
+    </pattern>
+  </defs>
+</svg>

@@ -899,6 +899,12 @@ h3 {
   box-shadow: inset 0 -8px 0 rgba(244, 77, 97, 0.08);
 }
 
+.asset-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .customer-bubble h3 {
   margin-bottom: 5px;
 }
@@ -960,6 +966,14 @@ h3 {
   box-shadow: inset 0 -16px 0 rgba(0, 0, 0, 0.1);
 }
 
+.machine-asset {
+  position: absolute;
+  inset: -6px -10px;
+  width: calc(100% + 20px);
+  height: calc(100% + 12px);
+  object-fit: contain;
+}
+
 .machine span {
   width: 42px;
   height: 42px;
@@ -968,6 +982,8 @@ h3 {
 }
 
 .machine strong {
+  position: relative;
+  z-index: 2;
   font-size: 0.78rem;
 }
 
@@ -1029,9 +1045,9 @@ h3 {
 .cup-toppings i {
   position: absolute;
   z-index: 3;
-  color: #2f2430;
   font-style: normal;
-  font-size: 0.82rem;
+  width: 15px;
+  height: 15px;
 }
 
 .cup-toppings i:nth-child(1) { left: 18%; bottom: 10%; }
@@ -1043,6 +1059,12 @@ h3 {
 .cup-toppings i:nth-child(7) { left: 22%; bottom: 32%; }
 .cup-toppings i:nth-child(8) { left: 45%; bottom: 34%; }
 .cup-toppings i:nth-child(9) { left: 64%; bottom: 32%; }
+
+.topping-asset {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 
 .cup-label,
 .bouquet-label {
@@ -1099,8 +1121,16 @@ h3 {
 }
 
 .scene-choice span {
+  display: grid;
+  place-items: center;
   font-weight: 900;
   text-align: center;
+}
+
+.choice-asset {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .scene-choice strong {
@@ -1157,7 +1187,15 @@ h3 {
 }
 
 .flower-bucket span {
+  display: grid;
+  place-items: center;
   font-size: 1.45rem;
+}
+
+.flower-asset {
+  width: 32px;
+  height: 42px;
+  object-fit: contain;
 }
 
 .flower-bucket strong {
@@ -1246,7 +1284,15 @@ h3 {
   position: relative;
   z-index: 2;
   font-style: normal;
-  font-size: 2.1rem;
+  display: block;
+  width: 52px;
+  height: 78px;
+}
+
+.bouquet-asset {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .wrap-shelf {
@@ -1283,8 +1329,8 @@ h3 {
   width: 30px;
   height: 42px;
   border-radius: 999px;
-  background: #f44d61;
-  box-shadow: 0 0 24px rgba(244, 77, 97, 0.75);
+  background: transparent;
+  box-shadow: none;
 }
 
 .lantern::before {
@@ -1304,8 +1350,12 @@ h3 {
 .lantern.two {
   left: 39%;
   top: 48px;
-  background: #f4c542;
-  box-shadow: 0 0 24px rgba(244, 197, 66, 0.72);
+}
+
+.lantern-asset {
+  width: 46px;
+  height: 68px;
+  filter: drop-shadow(0 0 16px rgba(244, 197, 66, 0.42));
 }
 
 .market-customers {
@@ -1325,8 +1375,13 @@ h3 {
   height: 70px;
   border-radius: 999px 999px 12px 12px;
   background: rgba(255, 255, 255, 0.72);
-  font-size: 1.8rem;
   animation: bob 1100ms ease-in-out infinite;
+}
+
+.market-avatar {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
 }
 
 .person-1,
@@ -1343,7 +1398,16 @@ h3 {
   transform: translateX(-50%);
 }
 
+.cart-asset {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .stall-awning {
+  display: none;
   height: 52px;
   border-radius: 14px 14px 6px 6px;
   background: repeating-linear-gradient(90deg, #f44d61 0 34px, #fff 34px 68px);
@@ -1380,10 +1444,20 @@ h3 {
 }
 
 .goods-tray span {
-  font-size: 1.15rem;
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+}
+
+.good-asset {
+  width: 25px;
+  height: 25px;
+  object-fit: contain;
 }
 
 .stall-table {
+  display: none;
   position: absolute;
   left: 0;
   right: 0;
@@ -1394,6 +1468,7 @@ h3 {
 }
 
 .stall-wheels {
+  display: none;
   position: absolute;
   left: 22%;
   right: 22%;
@@ -2131,7 +2206,8 @@ h3 {
   }
 
   .bouquet-flower i {
-    font-size: 1.62rem;
+    width: 40px;
+    height: 58px;
   }
 
   .tea-counter {

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="gift">
+  <rect x="12" y="27" width="40" height="28" rx="4" fill="#f44d61"/>
+  <path d="M32 27v28M12 36h40" stroke="#f4c542" stroke-width="6"/>
+  <path d="M31 27c-13-2-15-15-4-14 5 1 5 9 5 14zM33 27c13-2 15-15 4-14-5 1-5 9-5 14z" fill="#f4c542"/>
+</svg>

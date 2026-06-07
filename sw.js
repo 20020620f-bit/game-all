@@ -1,4 +1,4 @@
-const CACHE_NAME = "kitty-mini-games-v6";
+const CACHE_NAME = "kitty-mini-games-v7";
 const ASSETS = [
   "./",
   "index.html",
@@ -14,6 +14,28 @@ const ASSETS = [
   "assets/icons/icon-192.png",
   "assets/icons/icon-512.png",
   "assets/icons/apple-touch-icon.png",
+  "assets/game/customers/customer-1.svg",
+  "assets/game/customers/customer-2.svg",
+  "assets/game/customers/customer-3.svg",
+  "assets/game/customers/florist.svg",
+  "assets/game/customers/shopper.svg",
+  "assets/game/milk-tea/machine.svg",
+  "assets/game/milk-tea/pearl.svg",
+  "assets/game/milk-tea/pudding.svg",
+  "assets/game/milk-tea/coconut.svg",
+  "assets/game/flowers/rose.svg",
+  "assets/game/flowers/tulip.svg",
+  "assets/game/flowers/daisy.svg",
+  "assets/game/flowers/sunflower.svg",
+  "assets/game/flowers/baby-breath.svg",
+  "assets/game/stall/cart.svg",
+  "assets/game/stall/lantern-red.svg",
+  "assets/game/stall/lantern-yellow.svg",
+  "assets/game/stall/cake.svg",
+  "assets/game/stall/skewer.svg",
+  "assets/game/stall/cookie.svg",
+  "assets/game/stall/gift.svg",
+  "assets/game/stall/coin.svg",
 ];
 
 self.addEventListener("install", (event) => {

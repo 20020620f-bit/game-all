@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 120" role="img" aria-label="sunflower">
+  <path d="M40 50v60" stroke="#39966f" stroke-width="7" stroke-linecap="round"/>
+  <path d="M40 82c-12-8-21-6-26 2 10 6 20 4 26-2zM41 92c13-9 21-7 27 1-10 6-20 5-27-1z" fill="#53c6ae"/>
+  <g fill="#f4c542">
+    <ellipse cx="40" cy="10" rx="8" ry="15"/>
+    <ellipse cx="40" cy="58" rx="8" ry="15"/>
+    <ellipse cx="16" cy="34" rx="15" ry="8"/>
+    <ellipse cx="64" cy="34" rx="15" ry="8"/>
+    <ellipse cx="23" cy="17" rx="8" ry="15" transform="rotate(-45 23 17)"/>
+    <ellipse cx="57" cy="51" rx="8" ry="15" transform="rotate(-45 57 51)"/>
+    <ellipse cx="57" cy="17" rx="8" ry="15" transform="rotate(45 57 17)"/>
+    <ellipse cx="23" cy="51" rx="8" ry="15" transform="rotate(45 23 51)"/>
+  </g>
+  <circle cx="40" cy="34" r="17" fill="#6d4a3a"/>
+  <circle cx="40" cy="34" r="7" fill="#8a5c3e"/>
+</svg>
