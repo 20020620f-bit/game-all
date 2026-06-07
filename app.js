@@ -2320,8 +2320,6 @@ function createJumpStack(root) {
   let jumpAnimation = null;
   let fallAnimation = null;
   let targetDot = null;
-  let chargeOsc = null;
-  let chargeGain = null;
   let audioContext = null;
   const maxCharge = 1.45;
   const player = { x: 0, y: 0, air: 0, squash: 0, alpha: 1, directionX: 1, directionY: -1 };
@@ -2505,7 +2503,6 @@ function createJumpStack(root) {
     if (status === "charging") {
       charge = clamp((now - pressStart) / 1000, 0, maxCharge);
       player.squash = charge / maxCharge;
-      updateChargeSound();
       updateHud();
     } else {
       player.squash *= Math.max(0, 1 - dt * 8);
@@ -2544,7 +2541,6 @@ function createJumpStack(root) {
     try {
       canvas.setPointerCapture?.(event.pointerId);
     } catch {}
-    startChargeSound();
     updateHint();
   }
 
@@ -2554,7 +2550,6 @@ function createJumpStack(root) {
     try {
       canvas.releasePointerCapture?.(event.pointerId);
     } catch {}
-    stopChargeSound();
     launch();
   }
 
@@ -2652,7 +2647,6 @@ function createJumpStack(root) {
   function draw() {
     ctx.clearRect(0, 0, width, height);
     drawBackground();
-    drawPathHint();
     const sorted = [...platforms].sort((a, b) => a.x + a.y - (b.x + b.y));
     sorted.forEach(drawPlatform);
     drawTargetDot();
@@ -2670,26 +2664,6 @@ function createJumpStack(root) {
     for (let i = 0; i < 5; i += 1) {
       ctx.fillRect(i * 94 - 30, height * 0.28 + i * 26, 160, 1);
     }
-  }
-
-  function drawPathHint() {
-    if (status !== "charging") return;
-    const start = project(currentPlatform.x, currentPlatform.y, currentPlatform.h + 42);
-    const distance = 42 + charge * 205;
-    const end = project(
-      currentPlatform.x + player.directionX * distance,
-      currentPlatform.y + player.directionY * distance,
-      currentPlatform.h + 42,
-    );
-    ctx.save();
-    ctx.setLineDash([5, 7]);
-    ctx.strokeStyle = "rgba(255,255,255,0.76)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(start.x, start.y);
-    ctx.quadraticCurveTo((start.x + end.x) / 2, Math.min(start.y, end.y) - 80, end.x, end.y);
-    ctx.stroke();
-    ctx.restore();
   }
 
   function drawPlatform(platform) {
@@ -2882,37 +2856,6 @@ function createJumpStack(root) {
     drawFace([topA, topB, bottomB, bottomA], ctx.fillStyle);
   }
 
-  function startChargeSound() {
-    const audio = getAudioContext();
-    if (!audio) return;
-    stopChargeSound();
-    chargeOsc = audio.createOscillator();
-    chargeGain = audio.createGain();
-    chargeOsc.type = "sawtooth";
-    chargeOsc.frequency.value = 160;
-    chargeGain.gain.value = 0.018;
-    chargeOsc.connect(chargeGain).connect(audio.destination);
-    chargeOsc.start();
-  }
-
-  function updateChargeSound() {
-    if (!chargeOsc) return;
-    const audio = getAudioContext();
-    if (!audio) return;
-    chargeOsc.frequency.setTargetAtTime(160 + charge * 210, audio.currentTime, 0.02);
-  }
-
-  function stopChargeSound() {
-    if (!chargeOsc || !chargeGain) return;
-    const audio = getAudioContext();
-    try {
-      if (audio) chargeGain.gain.setTargetAtTime(0.0001, audio.currentTime, 0.025);
-      chargeOsc.stop((audio?.currentTime || 0) + 0.08);
-    } catch {}
-    chargeOsc = null;
-    chargeGain = null;
-  }
-
   function playJumpSound(kind) {
     const audio = getAudioContext();
     if (!audio) return;
@@ -2952,7 +2895,6 @@ function createJumpStack(root) {
   }
 
   function destroy() {
-    stopChargeSound();
     window.cancelAnimationFrame(raf);
     resizeObserver?.disconnect();
     window.removeEventListener("resize", resize);
