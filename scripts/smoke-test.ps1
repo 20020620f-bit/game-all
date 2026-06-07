@@ -98,7 +98,8 @@ try {
     milkTea: ".milk-tea-scene #serveMilkTea",
     flowerShop: ".flower-scene #serveBouquet",
     stall: ".market-scene #startStallDay",
-    skyShooter: ".shooter-wrap .shooter-canvas"
+    skyShooter: ".shooter-wrap .shooter-canvas",
+    jumpStack: ".jump-wrap .jump-canvas"
   };
   for (const [id, selector] of Object.entries(targets)) {
     startGame(id);
@@ -126,7 +127,7 @@ try {
     viewport = $result.viewport -eq $Width
     mobileBreakpoint = [bool]$result.mobileBreakpoint
     noHorizontalScroll = [bool]$result.noHorizontalScroll
-    hubCards = $result.hubCards -eq 10
+    hubCards = $result.hubCards -eq 11
     pairs = $result.pairs -eq 16
     pairsNoHorizontalScroll = [bool]$result.pairsNoHorizontalScroll
     merge = $result.merge -eq 16
@@ -147,6 +148,8 @@ try {
     stallNoHorizontalScroll = [bool]$result.stallNoHorizontalScroll
     skyShooter = $result.skyShooter -eq 1
     skyShooterNoHorizontalScroll = [bool]$result.skyShooterNoHorizontalScroll
+    jumpStack = $result.jumpStack -eq 1
+    jumpStackNoHorizontalScroll = [bool]$result.jumpStackNoHorizontalScroll
     saved = [bool]$result.saved
   }
 

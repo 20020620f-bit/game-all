@@ -296,6 +296,39 @@ h3 {
   font-size: 1.2rem;
 }
 
+.checkin-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  background: linear-gradient(135deg, rgba(244, 197, 66, 0.14), rgba(83, 198, 174, 0.12));
+}
+
+.checkin-card span,
+.checkin-card strong {
+  display: block;
+}
+
+.checkin-card span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.checkin-card strong {
+  margin-top: 4px;
+  font-size: 1rem;
+}
+
+.checkin-card button:disabled {
+  cursor: not-allowed;
+  border-color: #d8dde5;
+  background: #eef1f4;
+  color: #89929d;
+}
+
 .save-actions {
   display: none;
   grid-template-columns: repeat(2, 1fr);
@@ -2102,6 +2135,166 @@ h3 {
   color: #9099a3;
 }
 
+.jump-surface {
+  display: grid;
+  place-items: center;
+  min-height: 650px;
+  padding: 10px;
+  background: #e5e9f1;
+}
+
+.jump-wrap {
+  position: relative;
+  width: min(100%, 430px);
+  height: min(74svh, 700px);
+  min-height: 580px;
+  overflow: hidden;
+  border: 1px solid rgba(55, 61, 70, 0.16);
+  border-radius: 8px;
+  background: #c9ced8;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.34);
+  touch-action: none;
+}
+
+.jump-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.jump-hud {
+  position: absolute;
+  top: 16px;
+  left: 14px;
+  z-index: 3;
+  display: grid;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.jump-hud div {
+  min-width: 68px;
+  color: rgba(45, 51, 58, 0.86);
+}
+
+.jump-hud span,
+.jump-hud strong {
+  display: block;
+}
+
+.jump-hud span {
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: rgba(45, 51, 58, 0.58);
+}
+
+.jump-hud strong {
+  margin-top: 4px;
+  font-size: 1.45rem;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.jump-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 3;
+  transform: translateX(-50%);
+  min-width: 154px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.44);
+  color: rgba(45, 51, 58, 0.74);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-align: center;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+}
+
+.jump-power {
+  position: absolute;
+  left: 18px;
+  top: 38%;
+  z-index: 3;
+  width: 12px;
+  height: 138px;
+  border: 1px solid rgba(45, 51, 58, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.42);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.jump-power span {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  height: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f44d61, #f4c542);
+}
+
+.jump-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(43, 48, 58, 0.22);
+  transition: opacity 160ms ease;
+}
+
+.jump-overlay.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.jump-panel {
+  width: min(100%, 326px);
+  padding: 18px;
+  border: 1px solid rgba(45, 51, 58, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 48px rgba(45, 51, 58, 0.2);
+  text-align: center;
+}
+
+.jump-panel h3 {
+  margin-bottom: 8px;
+  font-size: 1.2rem;
+}
+
+.jump-panel p {
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.jump-actions {
+  display: grid;
+  gap: 9px;
+}
+
+.jump-actions button {
+  width: 100%;
+}
+
+.jump-actions button:disabled {
+  cursor: not-allowed;
+  border-color: #d6dbe1;
+  background: #eceff2;
+  color: #9099a3;
+}
+
 .toast {
   position: fixed;
   left: 50%;
@@ -2339,6 +2532,33 @@ h3 {
   .shooter-life {
     min-width: 78px;
     padding: 6px 8px;
+  }
+
+  .jump-surface {
+    min-height: 604px;
+    padding: 6px;
+  }
+
+  .jump-wrap {
+    width: 100%;
+    height: calc(100svh - 242px);
+    min-height: 562px;
+    max-height: 680px;
+  }
+
+  .jump-hud {
+    top: 12px;
+    left: 12px;
+    gap: 8px;
+  }
+
+  .jump-hud strong {
+    font-size: 1.28rem;
+  }
+
+  .jump-power {
+    left: 12px;
+    height: 120px;
   }
 
   .sort-items {

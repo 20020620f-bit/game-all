@@ -108,12 +108,25 @@ const games = [
     blurb: "拖动飞机，射击远处飞来的障碍。",
     bestLabel: "分",
   },
+  {
+    id: "jumpStack",
+    title: "跳一跳",
+    icon: "●",
+    color: "#e4e8f2",
+    tag: "长按",
+    blurb: "长按蓄力，松手跳到下一个平台。",
+    bestLabel: "分",
+  },
 ];
 
 const defaultSave = {
-  version: 3,
-  coins: 9999,
-  muted: true,
+  version: 4,
+  coins: 600,
+  muted: false,
+  checkIn: {
+    lastDate: "",
+    streak: 0,
+  },
   plays: 0,
   unlocked: {
     dress: ["hair-bob", "top-cardigan", "bottom-denim", "shoe-mary", "accent-red"],
@@ -149,6 +162,7 @@ const defaultSave = {
     flowerShop: { best: 0, served: 0, plays: 0 },
     stall: { best: 0, day: 1, reputation: 1, plays: 0, last: "还没开张" },
     skyShooter: { best: 0, plays: 0, kills: 0 },
+    jumpStack: { best: 0, plays: 0 },
   },
   updatedAt: Date.now(),
 };
@@ -158,6 +172,8 @@ let activeGame = null;
 let transient = {};
 let toastTimer = null;
 const SKY_SHOOTER_CONTINUE_COST = 120;
+const DAILY_CHECK_IN_REWARD = 1000;
+const JUMP_RETRY_COST = 10;
 
 const pairIcons = ["🍓", "🍰", "🧋", "🍩", "🍪", "🍒", "🧁", "🍮"];
 const mergeRanks = [
@@ -427,14 +443,27 @@ function loadSave() {
     if (!raw) return structuredClone(defaultSave);
     const parsed = JSON.parse(raw);
     const loaded = mergeSave(structuredClone(defaultSave), parsed);
-    if ((parsed.version || 1) < 2) {
-      loaded.version = 2;
-      loaded.coins = Math.max(Number(loaded.coins) || 0, 9999);
-    }
-    return loaded;
+    return normalizeSave(loaded, parsed);
   } catch {
     return structuredClone(defaultSave);
   }
+}
+
+function normalizeSave(loaded, source = {}) {
+  const sourceVersion = Number(source.version || 1);
+  const sourceCoins = Number(source.coins ?? loaded.coins);
+  if (sourceVersion < 4 && sourceCoins >= 9999) {
+    loaded.coins = 600;
+  }
+  if (sourceVersion < 4) {
+    loaded.muted = false;
+  }
+  loaded.coins = Math.max(0, Math.floor(Number(loaded.coins) || 0));
+  loaded.version = defaultSave.version;
+  if (!loaded.checkIn || typeof loaded.checkIn !== "object") {
+    loaded.checkIn = structuredClone(defaultSave.checkIn);
+  }
+  return loaded;
 }
 
 function mergeSave(base, incoming) {
@@ -526,6 +555,7 @@ function render() {
   if (activeGame === "flowerShop") renderFlowerShop();
   if (activeGame === "stall") renderStall();
   if (activeGame === "skyShooter") renderSkyShooter();
+  if (activeGame === "jumpStack") renderJumpStack();
 }
 
 function renderHub() {
@@ -558,6 +588,13 @@ function renderHub() {
   screen.querySelector("#playsCount").textContent = save.plays;
   screen.querySelector("#unlockCount").textContent = countUnlocks();
   screen.querySelector("#bestCount").textContent = totalBest();
+  const claimed = hasCheckedInToday();
+  const checkinStatus = screen.querySelector("#checkinStatus");
+  const checkinBtn = screen.querySelector("#checkinBtn");
+  checkinStatus.textContent = claimed ? `连续 ${save.checkIn.streak || 0} 天` : "今日可领";
+  checkinBtn.textContent = claimed ? "明天再来" : `签到 +${DAILY_CHECK_IN_REWARD}`;
+  checkinBtn.disabled = claimed;
+  checkinBtn.addEventListener("click", claimDailyCheckIn);
   screen.querySelector("#hubExportBtn").addEventListener("click", exportSave);
   screen.querySelector("#hubImportBtn").addEventListener("click", () => importFile.click());
 }
@@ -568,6 +605,31 @@ function countUnlocks() {
 
 function totalBest() {
   return games.reduce((sum, game) => sum + Number(save.games[game.id]?.best || 0), 0);
+}
+
+function todayKey() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function hasCheckedInToday() {
+  return save.checkIn.lastDate === todayKey();
+}
+
+function claimDailyCheckIn() {
+  if (hasCheckedInToday()) {
+    toast("今天已经签到过了");
+    return;
+  }
+  save.coins += DAILY_CHECK_IN_REWARD;
+  save.checkIn.lastDate = todayKey();
+  save.checkIn.streak = (Number(save.checkIn.streak) || 0) + 1;
+  persist();
+  toast(`签到成功 +${DAILY_CHECK_IN_REWARD} 金币`);
+  renderHub();
 }
 
 function renderStats(rows) {
@@ -2199,6 +2261,722 @@ function createSkyShooter(root) {
   };
 }
 
+function renderJumpStack() {
+  document.querySelector("#gameStats").hidden = true;
+  toolbarButton("重开", () => transient.jumpStack?.restart(false));
+
+  const surface = document.querySelector("#gameSurface");
+  surface.classList.add("jump-surface");
+  surface.innerHTML = `
+    <div class="jump-wrap">
+      <canvas id="jumpCanvas" class="jump-canvas" aria-label="跳一跳游戏画面"></canvas>
+      <div class="jump-hud">
+        <div><span>分数</span><strong id="jumpScore">0</strong></div>
+        <div><span>最好</span><strong id="jumpBest">${save.games.jumpStack.best || 0}</strong></div>
+        <div><span>金币</span><strong id="jumpCoins">${save.coins}</strong></div>
+      </div>
+      <div class="jump-power" aria-hidden="true"><span id="jumpPowerFill"></span></div>
+      <div id="jumpHint" class="jump-hint">按住蓄力，松手起跳</div>
+      <div id="jumpOverlay" class="jump-overlay" aria-live="polite">
+        <div class="jump-panel">
+          <h3 id="jumpOverlayTitle"></h3>
+          <p id="jumpOverlayText"></p>
+          <div id="jumpOverlayActions" class="jump-actions"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const state = createJumpStack(surface.querySelector(".jump-wrap"));
+  transient.jumpStack = state;
+  transient.cleanup = () => state.destroy();
+}
+
+function createJumpStack(root) {
+  const canvas = root.querySelector("#jumpCanvas");
+  const ctx = canvas.getContext("2d");
+  const scoreNode = root.querySelector("#jumpScore");
+  const bestNode = root.querySelector("#jumpBest");
+  const coinsNode = root.querySelector("#jumpCoins");
+  const powerFill = root.querySelector("#jumpPowerFill");
+  const hintNode = root.querySelector("#jumpHint");
+  const overlay = root.querySelector("#jumpOverlay");
+  const overlayTitle = root.querySelector("#jumpOverlayTitle");
+  const overlayText = root.querySelector("#jumpOverlayText");
+  const overlayActions = root.querySelector("#jumpOverlayActions");
+
+  let width = 360;
+  let height = 640;
+  let dpr = 1;
+  let raf = 0;
+  let last = performance.now();
+  let score = 0;
+  let status = "intro";
+  let charge = 0;
+  let pressStart = 0;
+  let platforms = [];
+  let currentPlatform = null;
+  let nextPlatform = null;
+  let jumpAnimation = null;
+  let fallAnimation = null;
+  let targetDot = null;
+  let chargeOsc = null;
+  let chargeGain = null;
+  let audioContext = null;
+  const maxCharge = 1.45;
+  const player = { x: 0, y: 0, air: 0, squash: 0, alpha: 1, directionX: 1, directionY: -1 };
+  const camera = { x: 0, y: 0, targetX: 0, targetY: 0 };
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    width = Math.max(300, rect.width || width);
+    height = Math.max(520, rect.height || height);
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    focusOn(currentPlatform || { x: 0, y: 0, h: 44 }, true);
+    draw();
+  }
+
+  function resetRun(showIntro = true) {
+    score = 0;
+    status = showIntro ? "intro" : "ready";
+    charge = 0;
+    jumpAnimation = null;
+    fallAnimation = null;
+    targetDot = null;
+    player.alpha = 1;
+    currentPlatform = makePlatform(0, 0, 132, 104, 44, "slate");
+    nextPlatform = makeNextPlatform(currentPlatform);
+    platforms = [currentPlatform, nextPlatform];
+    player.x = currentPlatform.x;
+    player.y = currentPlatform.y;
+    player.air = 0;
+    setPlayerDirection();
+    focusOn(currentPlatform, true);
+    updateHud();
+    updateHint();
+    if (showIntro) {
+      setOverlay("准备跳", "长按屏幕蓄力，松手后角色会按蓄力距离跳出去。中心落点会闪小白点。", [
+        { label: "开始", primary: true, onClick: () => startRound() },
+        { label: "返回首页", onClick: backHome },
+      ]);
+    } else {
+      hideOverlay();
+    }
+  }
+
+  function startRound() {
+    hideOverlay();
+    status = "ready";
+    updateHint();
+  }
+
+  function restart(payCost = false) {
+    if (payCost) {
+      if (save.coins < JUMP_RETRY_COST) {
+        toast("金币不够再玩一局");
+        return;
+      }
+      save.coins -= JUMP_RETRY_COST;
+      persist();
+    }
+    resetRun(false);
+  }
+
+  function updateHud() {
+    scoreNode.textContent = score;
+    bestNode.textContent = Math.max(save.games.jumpStack.best || 0, score);
+    coinsNode.textContent = save.coins;
+    powerFill.style.height = `${Math.round((charge / maxCharge) * 100)}%`;
+  }
+
+  function updateHint(text = null) {
+    if (text) {
+      hintNode.textContent = text;
+      return;
+    }
+    if (status === "charging") hintNode.textContent = "松手起跳";
+    else if (status === "jumping") hintNode.textContent = "飞行中";
+    else if (status === "failed") hintNode.textContent = "落空了";
+    else hintNode.textContent = "按住蓄力，松手起跳";
+  }
+
+  function setOverlay(title, text, actions) {
+    overlayTitle.textContent = title;
+    overlayText.textContent = text;
+    overlayActions.replaceChildren();
+    actions.forEach((action) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = action.primary ? "primary-button" : "pill-button";
+      button.textContent = action.label;
+      button.disabled = !!action.disabled;
+      button.addEventListener("click", action.onClick);
+      overlayActions.append(button);
+    });
+    overlay.classList.add("is-visible");
+  }
+
+  function hideOverlay() {
+    overlay.classList.remove("is-visible");
+  }
+
+  function makePlatform(x, y, w, d, h, kind = null) {
+    const kinds = ["slate", "green", "cat", "camera", "round", "cube"];
+    const platformKind = kind || randomFrom(kinds);
+    const colors = {
+      slate: "#666a68",
+      green: "#5fa474",
+      cat: "#b8f336",
+      camera: "#f17b2d",
+      round: "#f4f4f1",
+      cube: "#f5c122",
+    };
+    return {
+      x,
+      y,
+      w,
+      d,
+      h,
+      kind: platformKind,
+      color: colors[platformKind],
+      seed: Math.random() * 8,
+    };
+  }
+
+  function makeNextPlatform(from) {
+    const wide = Math.random() > 0.55;
+    const dx = randInt(wide ? 145 : 105, wide ? 190 : 165);
+    const dy = -randInt(wide ? 45 : 90, wide ? 95 : 155);
+    return makePlatform(
+      from.x + dx,
+      from.y + dy,
+      randInt(86, 138),
+      randInt(78, 118),
+      randInt(34, 54),
+    );
+  }
+
+  function setPlayerDirection() {
+    const dx = nextPlatform.x - currentPlatform.x;
+    const dy = nextPlatform.y - currentPlatform.y;
+    const len = Math.hypot(dx, dy) || 1;
+    player.directionX = dx / len;
+    player.directionY = dy / len;
+  }
+
+  function projectRaw(x, y, z = 0) {
+    return {
+      x: width * 0.5 + (x - y) * 0.72,
+      y: height * 0.58 + (x + y) * 0.36 - z,
+    };
+  }
+
+  function project(x, y, z = 0) {
+    const raw = projectRaw(x, y, z);
+    return { x: raw.x + camera.x, y: raw.y + camera.y };
+  }
+
+  function focusOn(platform, immediate = false) {
+    if (!platform) return;
+    const top = projectRaw(platform.x, platform.y, platform.h);
+    camera.targetX = width * 0.3 - top.x;
+    camera.targetY = height * 0.68 - top.y;
+    if (immediate) {
+      camera.x = camera.targetX;
+      camera.y = camera.targetY;
+    }
+  }
+
+  function loop(now) {
+    const dt = Math.min(0.034, Math.max(0.001, (now - last) / 1000));
+    last = now;
+    update(dt, now);
+    draw();
+    raf = window.requestAnimationFrame(loop);
+  }
+
+  function update(dt, now) {
+    camera.x += (camera.targetX - camera.x) * Math.min(1, dt * 7);
+    camera.y += (camera.targetY - camera.y) * Math.min(1, dt * 7);
+
+    if (status === "charging") {
+      charge = clamp((now - pressStart) / 1000, 0, maxCharge);
+      player.squash = charge / maxCharge;
+      updateChargeSound();
+      updateHud();
+    } else {
+      player.squash *= Math.max(0, 1 - dt * 8);
+    }
+
+    if (status === "jumping" && jumpAnimation) {
+      const t = clamp((now - jumpAnimation.start) / jumpAnimation.duration, 0, 1);
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      player.x = lerp(jumpAnimation.from.x, jumpAnimation.to.x, eased);
+      player.y = lerp(jumpAnimation.from.y, jumpAnimation.to.y, eased);
+      player.air = Math.sin(Math.PI * t) * jumpAnimation.arc;
+      if (t >= 1) resolveLanding(now);
+    }
+
+    if (status === "falling" && fallAnimation) {
+      const t = clamp((now - fallAnimation.start) / fallAnimation.duration, 0, 1);
+      player.x = lerp(fallAnimation.from.x, fallAnimation.to.x, t);
+      player.y = lerp(fallAnimation.from.y, fallAnimation.to.y, t);
+      player.air = -Math.pow(t, 1.7) * 190;
+      player.alpha = 1 - t * 0.75;
+      if (t >= 1) failGame();
+    }
+
+    if (targetDot) {
+      targetDot.life -= dt;
+      if (targetDot.life <= 0) targetDot = null;
+    }
+  }
+
+  function beginCharge(event) {
+    if (status !== "ready") return;
+    event.preventDefault();
+    status = "charging";
+    pressStart = performance.now();
+    charge = 0;
+    try {
+      canvas.setPointerCapture?.(event.pointerId);
+    } catch {}
+    startChargeSound();
+    updateHint();
+  }
+
+  function releaseCharge(event) {
+    if (status !== "charging") return;
+    event.preventDefault();
+    try {
+      canvas.releasePointerCapture?.(event.pointerId);
+    } catch {}
+    stopChargeSound();
+    launch();
+  }
+
+  function launch() {
+    const distance = 42 + charge * 205;
+    const from = { x: currentPlatform.x, y: currentPlatform.y };
+    const to = {
+      x: from.x + player.directionX * distance,
+      y: from.y + player.directionY * distance,
+    };
+    jumpAnimation = {
+      from,
+      to,
+      arc: 82 + distance * 0.17,
+      start: performance.now(),
+      duration: 430 + distance * 1.25,
+    };
+    status = "jumping";
+    updateHint();
+  }
+
+  function resolveLanding(now) {
+    jumpAnimation = null;
+    player.air = 0;
+    const relX = player.x - nextPlatform.x;
+    const relY = player.y - nextPlatform.y;
+    const inside =
+      Math.abs(relX) <= nextPlatform.w * 0.5 &&
+      Math.abs(relY) <= nextPlatform.d * 0.5;
+    if (!inside) {
+      playJumpSound("fail");
+      status = "falling";
+      fallAnimation = {
+        start: now,
+        duration: 480,
+        from: { x: player.x, y: player.y },
+        to: {
+          x: player.x + player.directionX * 30,
+          y: player.y + player.directionY * 30,
+        },
+      };
+      updateHint();
+      return;
+    }
+
+    const centerDistance = Math.hypot(relX, relY);
+    const perfect = centerDistance <= Math.min(nextPlatform.w, nextPlatform.d) * 0.12;
+    score += perfect ? 2 : 1;
+    save.games.jumpStack.best = Math.max(save.games.jumpStack.best || 0, score);
+    persist();
+    if (perfect) {
+      targetDot = { x: nextPlatform.x, y: nextPlatform.y, z: nextPlatform.h + 3, life: 0.7, maxLife: 0.7 };
+      playJumpSound("perfect");
+      updateHint("正中心");
+    } else {
+      playJumpSound("land");
+      updateHint("站稳了");
+    }
+
+    currentPlatform = nextPlatform;
+    nextPlatform = makeNextPlatform(currentPlatform);
+    platforms.push(nextPlatform);
+    platforms = platforms.slice(-4);
+    player.x = currentPlatform.x;
+    player.y = currentPlatform.y;
+    player.air = 0;
+    player.alpha = 1;
+    charge = 0;
+    setPlayerDirection();
+    focusOn(currentPlatform);
+    status = "ready";
+    updateHud();
+    window.setTimeout(() => {
+      if (status === "ready") updateHint();
+    }, 520);
+  }
+
+  function failGame() {
+    status = "failed";
+    save.games.jumpStack.best = Math.max(save.games.jumpStack.best || 0, score);
+    persist();
+    updateHud();
+    updateHint();
+    setOverlay("没跳上去", `本局 ${score} 分。再玩一局会消耗 ${JUMP_RETRY_COST} 金币。`, [
+      {
+        label: `再玩一局 -${JUMP_RETRY_COST} 金币`,
+        primary: true,
+        disabled: save.coins < JUMP_RETRY_COST,
+        onClick: () => restart(true),
+      },
+      { label: "返回首页", onClick: backHome },
+    ]);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    drawBackground();
+    drawPathHint();
+    const sorted = [...platforms].sort((a, b) => a.x + a.y - (b.x + b.y));
+    sorted.forEach(drawPlatform);
+    drawTargetDot();
+    drawPlayer();
+    drawChargeMeter();
+  }
+
+  function drawBackground() {
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, "#d4d8e3");
+    gradient.addColorStop(1, "#c3c8d2");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    for (let i = 0; i < 5; i += 1) {
+      ctx.fillRect(i * 94 - 30, height * 0.28 + i * 26, 160, 1);
+    }
+  }
+
+  function drawPathHint() {
+    if (status !== "charging") return;
+    const start = project(currentPlatform.x, currentPlatform.y, currentPlatform.h + 42);
+    const distance = 42 + charge * 205;
+    const end = project(
+      currentPlatform.x + player.directionX * distance,
+      currentPlatform.y + player.directionY * distance,
+      currentPlatform.h + 42,
+    );
+    ctx.save();
+    ctx.setLineDash([5, 7]);
+    ctx.strokeStyle = "rgba(255,255,255,0.76)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.quadraticCurveTo((start.x + end.x) / 2, Math.min(start.y, end.y) - 80, end.x, end.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPlatform(platform) {
+    if (platform.kind === "round") {
+      drawRoundPlatform(platform);
+      return;
+    }
+    const topZ = platform.h;
+    const bottomZ = 0;
+    const corners = getPlatformCorners(platform, topZ);
+    const lower = getPlatformCorners(platform, bottomZ);
+    drawShadow(platform);
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    drawFace([corners.sw, corners.se, lower.se, lower.sw], shade(platform.color, -24));
+    drawFace([corners.ne, corners.se, lower.se, lower.ne], shade(platform.color, -34));
+    drawStripe(corners.sw, corners.se, lower.se, lower.sw);
+    drawFace([corners.nw, corners.ne, corners.se, corners.sw], platform.color);
+    ctx.strokeStyle = "rgba(42, 47, 50, 0.2)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    drawPlatformDecoration(platform, corners);
+    ctx.restore();
+  }
+
+  function drawRoundPlatform(platform) {
+    drawShadow(platform);
+    const top = project(platform.x, platform.y, platform.h);
+    const bottom = project(platform.x, platform.y, 0);
+    ctx.save();
+    ctx.fillStyle = "#d5d7d4";
+    ctx.beginPath();
+    ctx.ellipse(bottom.x, bottom.y, platform.w * 0.37, platform.d * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = platform.color;
+    ctx.beginPath();
+    ctx.ellipse(top.x, top.y, platform.w * 0.42, platform.d * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(42, 47, 50, 0.16)";
+    ctx.stroke();
+    ctx.fillStyle = "rgba(120, 124, 124, 0.5)";
+    ctx.fillRect(top.x - platform.w * 0.1, top.y + 12, platform.w * 0.2, platform.h + 12);
+    ctx.restore();
+  }
+
+  function drawShadow(platform) {
+    const p = project(platform.x - 16, platform.y + 34, 0);
+    ctx.save();
+    ctx.fillStyle = "rgba(52, 57, 60, 0.22)";
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + 18, platform.w * 0.6, platform.d * 0.28, -0.16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPlatformDecoration(platform, corners) {
+    if (platform.kind === "cat") {
+      const center = midpoint(corners.se, corners.sw);
+      ctx.fillStyle = "#0d1113";
+      ctx.beginPath();
+      ctx.arc(center.x - 15, center.y - 5, 4, 0, Math.PI * 2);
+      ctx.arc(center.x + 15, center.y - 5, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#0d1113";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(center.x - 4, center.y + 8);
+      ctx.lineTo(center.x, center.y + 11);
+      ctx.lineTo(center.x + 4, center.y + 8);
+      ctx.stroke();
+    }
+    if (platform.kind === "camera") {
+      const center = midpoint(corners.se, corners.sw);
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(center.x + 16, center.y - 8, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = platform.color;
+      ctx.beginPath();
+      ctx.arc(center.x + 16, center.y - 8, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (platform.kind === "cube") {
+      const top = midpoint(corners.nw, corners.se);
+      ctx.strokeStyle = "rgba(255,255,255,0.68)";
+      ctx.lineWidth = 2;
+      for (let i = -1; i <= 1; i += 1) {
+        ctx.beginPath();
+        ctx.moveTo(top.x - 34, top.y + i * 12);
+        ctx.lineTo(top.x + 34, top.y + i * 12);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawTargetDot() {
+    if (!targetDot) return;
+    const p = project(targetDot.x, targetDot.y, targetDot.z);
+    const alpha = clamp(targetDot.life / targetDot.maxLife, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "#fff";
+    ctx.shadowColor = "rgba(255,255,255,0.8)";
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 7 + (1 - alpha) * 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPlayer() {
+    const baseZ = currentPlatform ? currentPlatform.h : 44;
+    const p = project(player.x, player.y, baseZ + player.air);
+    const ground = project(player.x, player.y, baseZ + 1);
+    ctx.save();
+    ctx.globalAlpha = player.alpha;
+    ctx.fillStyle = "rgba(41, 44, 48, 0.22)";
+    ctx.beginPath();
+    ctx.ellipse(ground.x + 12, ground.y + 14, 20, 9, 0.18, 0, Math.PI * 2);
+    ctx.fill();
+    const squash = player.squash;
+    const bodyHeight = 46 - squash * 9;
+    const bodyWidth = 23 + squash * 7;
+    const bodyGradient = ctx.createLinearGradient(p.x - 20, p.y - bodyHeight, p.x + 18, p.y + 12);
+    bodyGradient.addColorStop(0, "#8a77bd");
+    bodyGradient.addColorStop(0.48, "#3c326d");
+    bodyGradient.addColorStop(1, "#211d47");
+    ctx.fillStyle = bodyGradient;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y - bodyHeight * 0.28, bodyWidth * 0.52, bodyHeight * 0.52, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#2d2659";
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + 3, bodyWidth * 0.64, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const headGradient = ctx.createRadialGradient(p.x - 6, p.y - bodyHeight - 5, 3, p.x, p.y - bodyHeight + 2, 20);
+    headGradient.addColorStop(0, "#b7a8df");
+    headGradient.addColorStop(1, "#2d285e");
+    ctx.fillStyle = headGradient;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - bodyHeight - 2, 17 - squash * 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawChargeMeter() {
+    if (status !== "charging") return;
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.68)";
+    roundRect(ctx, 18, height * 0.38, 10, 130, 5);
+    ctx.fill();
+    ctx.fillStyle = "#f44d61";
+    const fill = (charge / maxCharge) * 126;
+    roundRect(ctx, 20, height * 0.38 + 128 - fill, 6, fill, 3);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function getPlatformCorners(platform, z) {
+    const x = platform.x;
+    const y = platform.y;
+    const w = platform.w * 0.5;
+    const d = platform.d * 0.5;
+    return {
+      nw: project(x - w, y - d, z),
+      ne: project(x + w, y - d, z),
+      se: project(x + w, y + d, z),
+      sw: project(x - w, y + d, z),
+    };
+  }
+
+  function drawFace(points, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    points.forEach((point, index) => {
+      if (index === 0) ctx.moveTo(point.x, point.y);
+      else ctx.lineTo(point.x, point.y);
+    });
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawStripe(a, b, c, d) {
+    ctx.fillStyle = "rgba(255,255,255,0.62)";
+    const topA = lerpPoint(a, d, 0.42);
+    const topB = lerpPoint(b, c, 0.42);
+    const bottomA = lerpPoint(a, d, 0.62);
+    const bottomB = lerpPoint(b, c, 0.62);
+    drawFace([topA, topB, bottomB, bottomA], ctx.fillStyle);
+  }
+
+  function startChargeSound() {
+    const audio = getAudioContext();
+    if (!audio) return;
+    stopChargeSound();
+    chargeOsc = audio.createOscillator();
+    chargeGain = audio.createGain();
+    chargeOsc.type = "sawtooth";
+    chargeOsc.frequency.value = 160;
+    chargeGain.gain.value = 0.018;
+    chargeOsc.connect(chargeGain).connect(audio.destination);
+    chargeOsc.start();
+  }
+
+  function updateChargeSound() {
+    if (!chargeOsc) return;
+    const audio = getAudioContext();
+    if (!audio) return;
+    chargeOsc.frequency.setTargetAtTime(160 + charge * 210, audio.currentTime, 0.02);
+  }
+
+  function stopChargeSound() {
+    if (!chargeOsc || !chargeGain) return;
+    const audio = getAudioContext();
+    try {
+      if (audio) chargeGain.gain.setTargetAtTime(0.0001, audio.currentTime, 0.025);
+      chargeOsc.stop((audio?.currentTime || 0) + 0.08);
+    } catch {}
+    chargeOsc = null;
+    chargeGain = null;
+  }
+
+  function playJumpSound(kind) {
+    const audio = getAudioContext();
+    if (!audio) return;
+    const now = audio.currentTime;
+    const gain = audio.createGain();
+    gain.connect(audio.destination);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + (kind === "fail" ? 0.32 : 0.2));
+
+    if (kind === "perfect") {
+      playOsc(audio, gain, 660, 0, 0.13, "sine");
+      playOsc(audio, gain, 920, 0.09, 0.18, "sine");
+    } else if (kind === "fail") {
+      playOsc(audio, gain, 138, 0, 0.3, "square");
+    } else {
+      playOsc(audio, gain, 380, 0, 0.16, "triangle");
+    }
+  }
+
+  function playOsc(audio, gain, frequency, delay, duration, type) {
+    const osc = audio.createOscillator();
+    osc.type = type;
+    osc.frequency.value = frequency;
+    osc.connect(gain);
+    osc.start(audio.currentTime + delay);
+    osc.stop(audio.currentTime + delay + duration);
+  }
+
+  function getAudioContext() {
+    if (save.muted) return null;
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return null;
+    audioContext ||= new AudioCtor();
+    if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+    return audioContext;
+  }
+
+  function destroy() {
+    stopChargeSound();
+    window.cancelAnimationFrame(raf);
+    resizeObserver?.disconnect();
+    window.removeEventListener("resize", resize);
+    canvas.removeEventListener("pointerdown", beginCharge);
+    canvas.removeEventListener("pointerup", releaseCharge);
+    canvas.removeEventListener("pointercancel", releaseCharge);
+    canvas.removeEventListener("pointerleave", releaseCharge);
+  }
+
+  const resizeObserver = "ResizeObserver" in window ? new ResizeObserver(resize) : null;
+  resizeObserver?.observe(root);
+  window.addEventListener("resize", resize);
+  canvas.addEventListener("pointerdown", beginCharge, { passive: false });
+  canvas.addEventListener("pointerup", releaseCharge, { passive: false });
+  canvas.addEventListener("pointercancel", releaseCharge, { passive: false });
+  canvas.addEventListener("pointerleave", releaseCharge, { passive: false });
+
+  resize();
+  resetRun(true);
+  raf = window.requestAnimationFrame(loop);
+
+  return { restart, destroy };
+}
+
 function randomFrom(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
@@ -2240,6 +3018,33 @@ function roundRect(ctx, x, y, width, height, radius) {
   ctx.closePath();
 }
 
+function lerp(from, to, amount) {
+  return from + (to - from) * amount;
+}
+
+function lerpPoint(from, to, amount) {
+  return {
+    x: lerp(from.x, to.x, amount),
+    y: lerp(from.y, to.y, amount),
+  };
+}
+
+function midpoint(a, b) {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  };
+}
+
+function shade(hex, amount) {
+  const clean = hex.replace("#", "");
+  const number = Number.parseInt(clean, 16);
+  const r = clamp((number >> 16) + amount, 0, 255);
+  const g = clamp(((number >> 8) & 255) + amount, 0, 255);
+  const b = clamp((number & 255) + amount, 0, 255);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -2261,7 +3066,7 @@ function importSave(file) {
   reader.addEventListener("load", () => {
     try {
       const parsed = JSON.parse(String(reader.result));
-      save = mergeSave(structuredClone(defaultSave), parsed);
+      save = normalizeSave(mergeSave(structuredClone(defaultSave), parsed), parsed);
       persist();
       toast("存档已导入");
       backHome();
