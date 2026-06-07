@@ -94,7 +94,10 @@ try {
     sort: ".sort-items .tile-button",
     find: ".find-scenes .scene",
     dress: ".avatar-stage .avatar",
-    room: ".room-stage .room-desk"
+    room: ".room-stage .room-desk",
+    milkTea: ".shop-layout #serveMilkTea",
+    flowerShop: ".shop-layout #serveBouquet",
+    stall: ".shop-layout #startStallDay"
   };
   for (const [id, selector] of Object.entries(targets)) {
     startGame(id);
@@ -122,7 +125,7 @@ try {
     viewport = $result.viewport -eq $Width
     mobileBreakpoint = [bool]$result.mobileBreakpoint
     noHorizontalScroll = [bool]$result.noHorizontalScroll
-    hubCards = $result.hubCards -eq 6
+    hubCards = $result.hubCards -eq 9
     pairs = $result.pairs -eq 16
     pairsNoHorizontalScroll = [bool]$result.pairsNoHorizontalScroll
     merge = $result.merge -eq 16
@@ -135,6 +138,12 @@ try {
     dressNoHorizontalScroll = [bool]$result.dressNoHorizontalScroll
     room = $result.room -eq 1
     roomNoHorizontalScroll = [bool]$result.roomNoHorizontalScroll
+    milkTea = $result.milkTea -eq 1
+    milkTeaNoHorizontalScroll = [bool]$result.milkTeaNoHorizontalScroll
+    flowerShop = $result.flowerShop -eq 1
+    flowerShopNoHorizontalScroll = [bool]$result.flowerShopNoHorizontalScroll
+    stall = $result.stall -eq 1
+    stallNoHorizontalScroll = [bool]$result.stallNoHorizontalScroll
     saved = [bool]$result.saved
   }
 

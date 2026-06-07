@@ -10,6 +10,20 @@
 - 下午茶找不同
 - 今日穿搭
 - 桌面布置
+- 奶茶店
+- 花店
+- 摆摊店
+
+## 玩法参考
+
+新增店铺玩法前检查过这些 GitHub 项目：
+
+- `greenkg/lemonade-stand-js`：摆摊经营的库存、定价、天气、口碑模型
+- `DaJoker29/cafe-sim`：咖啡店模拟方向，许可证为 GPLv2，未直接并入代码
+- `jaidelikescode/MatchaMother`：顾客点单、配方制作、连击奖励的浏览器玩法
+- `EduardoFontes123/capybara-bubble-tea-catcher`：奶茶题材轻小游戏方向
+
+未直接复制第三方代码；当前实现按本项目现有结构重写，避免许可证和依赖混入。
 
 ## 存档
 

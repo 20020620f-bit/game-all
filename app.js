@@ -64,10 +64,37 @@ const games = [
     blurb: "摆一个适合摸鱼的办公桌。",
     bestLabel: "件",
   },
+  {
+    id: "milkTea",
+    title: "奶茶店",
+    icon: "🧋",
+    color: "#ffe4c9",
+    tag: "接单",
+    blurb: "按顾客小票配茶底、奶、糖和小料。",
+    bestLabel: "杯",
+  },
+  {
+    id: "flowerShop",
+    title: "花店",
+    icon: "🌸",
+    color: "#ffe4f0",
+    tag: "花束",
+    blurb: "照订单搭配花材和包装。",
+    bestLabel: "束",
+  },
+  {
+    id: "stall",
+    title: "摆摊店",
+    icon: "🛍️",
+    color: "#fff2c8",
+    tag: "经营",
+    blurb: "进货、定价、布置摊位，开张收摊。",
+    bestLabel: "利",
+  },
 ];
 
 const defaultSave = {
-  version: 2,
+  version: 3,
   coins: 9999,
   muted: true,
   plays: 0,
@@ -101,6 +128,9 @@ const defaultSave = {
         laptop: "laptop-graphite",
       },
     },
+    milkTea: { best: 0, served: 0, plays: 0 },
+    flowerShop: { best: 0, served: 0, plays: 0 },
+    stall: { best: 0, day: 1, reputation: 1, plays: 0, last: "还没开张" },
   },
   updatedAt: Date.now(),
 };
@@ -265,6 +295,60 @@ const roomOptions = {
   ],
 };
 
+const milkTeaOptions = {
+  tea: ["红茶", "绿茶", "乌龙"],
+  milk: ["牛奶", "燕麦奶", "厚乳"],
+  sugar: ["三分糖", "半糖", "七分糖"],
+  topping: ["珍珠", "布丁", "椰果"],
+};
+
+const milkTeaOrders = [
+  order("珍珠奶茶", "红茶", "牛奶", "半糖", "珍珠", "🧋"),
+  order("乌龙厚乳", "乌龙", "厚乳", "三分糖", "布丁", "🥤"),
+  order("清爽椰果绿", "绿茶", "燕麦奶", "三分糖", "椰果", "🍵"),
+  order("布丁奶绿", "绿茶", "牛奶", "七分糖", "布丁", "🍮"),
+  order("燕麦珍珠乌龙", "乌龙", "燕麦奶", "半糖", "珍珠", "🧋"),
+];
+
+const flowerOptions = {
+  flower: ["玫瑰", "郁金香", "雏菊", "向日葵", "满天星"],
+  wrap: ["粉纸", "牛皮纸", "蓝丝带"],
+};
+
+const flowerEmoji = {
+  玫瑰: "🌹",
+  郁金香: "🌷",
+  雏菊: "🌼",
+  向日葵: "🌻",
+  满天星: "✨",
+  粉纸: "🎀",
+  牛皮纸: "📦",
+  蓝丝带: "💙",
+};
+
+const flowerOrders = [
+  bouquet("告白花束", ["玫瑰", "玫瑰", "满天星"], "粉纸"),
+  bouquet("早安花束", ["郁金香", "雏菊", "满天星"], "蓝丝带"),
+  bouquet("元气花束", ["向日葵", "向日葵", "雏菊"], "牛皮纸"),
+  bouquet("温柔小束", ["玫瑰", "郁金香", "雏菊"], "粉纸"),
+  bouquet("办公桌花", ["雏菊", "满天星", "满天星"], "牛皮纸"),
+];
+
+const stallWeather = [
+  { name: "晴天", emoji: "☀️", traffic: 1.12 },
+  { name: "多云", emoji: "⛅", traffic: 1 },
+  { name: "小雨", emoji: "🌧️", traffic: 0.72 },
+  { name: "晚风", emoji: "🌙", traffic: 1.22 },
+];
+
+function order(name, tea, milk, sugar, topping, icon) {
+  return { name, tea, milk, sugar, topping, icon };
+}
+
+function bouquet(name, flowers, wrap) {
+  return { name, flowers, wrap };
+}
+
 function item(icon, x, y, size) {
   return { icon, x, y, size };
 }
@@ -321,12 +405,18 @@ function startGame(id) {
     persist();
   }
   render();
+  scrollToTop();
 }
 
 function backHome() {
   activeGame = null;
   transient = {};
   render();
+  scrollToTop();
+}
+
+function scrollToTop() {
+  window.requestAnimationFrame(() => window.scrollTo(0, 0));
 }
 
 function render() {
@@ -360,6 +450,9 @@ function render() {
   if (activeGame === "find") renderFind();
   if (activeGame === "dress") renderDress();
   if (activeGame === "room") renderRoom();
+  if (activeGame === "milkTea") renderMilkTea();
+  if (activeGame === "flowerShop") renderFlowerShop();
+  if (activeGame === "stall") renderStall();
 }
 
 function renderHub() {
@@ -919,6 +1012,335 @@ function unlockOption(bucket, option) {
 
 function getOption(options, id) {
   return options.find((entry) => entry.id === id) || options[0];
+}
+
+function renderMilkTea(reset = false) {
+  if (!transient.milkTea || reset) {
+    transient.milkTea = {
+      order: randomFrom(milkTeaOrders),
+      current: { tea: null, milk: null, sugar: null, topping: null },
+      served: 0,
+      combo: 0,
+      mistakes: 0,
+    };
+  }
+  toolbarButton("换顾客", () => {
+    transient.milkTea.order = randomFrom(milkTeaOrders);
+    transient.milkTea.current = { tea: null, milk: null, sugar: null, topping: null };
+    render();
+  });
+  toolbarButton("新一轮", () => renderMilkTea(true));
+  const state = transient.milkTea;
+  renderStats([
+    { label: "本轮", value: `${state.served}/5` },
+    { label: "连击", value: state.combo },
+    { label: "总杯数", value: save.games.milkTea.best || 0 },
+    { label: "金币", value: save.coins },
+  ]);
+  const surface = document.querySelector("#gameSurface");
+  surface.innerHTML = `
+    <div class="shop-layout">
+      <section class="order-ticket">
+        <div class="ticket-icon">${state.order.icon}</div>
+        <p class="eyebrow">Order</p>
+        <h3>${state.order.name}</h3>
+        <p>${state.order.tea} · ${state.order.milk} · ${state.order.sugar} · ${state.order.topping}</p>
+        <div class="cup-preview">${milkTeaPreview(state.current)}</div>
+        <button class="primary-button" type="button" id="serveMilkTea">出杯</button>
+      </section>
+      <section class="prep-panel"></section>
+    </div>
+  `;
+  const panel = surface.querySelector(".prep-panel");
+  renderOptionGroup(panel, "茶底", milkTeaOptions.tea, state.current.tea, (value) => {
+    state.current.tea = value;
+    render();
+  });
+  renderOptionGroup(panel, "奶底", milkTeaOptions.milk, state.current.milk, (value) => {
+    state.current.milk = value;
+    render();
+  });
+  renderOptionGroup(panel, "甜度", milkTeaOptions.sugar, state.current.sugar, (value) => {
+    state.current.sugar = value;
+    render();
+  });
+  renderOptionGroup(panel, "小料", milkTeaOptions.topping, state.current.topping, (value) => {
+    state.current.topping = value;
+    render();
+  });
+  surface.querySelector("#serveMilkTea").addEventListener("click", serveMilkTea);
+}
+
+function serveMilkTea() {
+  const state = transient.milkTea;
+  const current = state.current;
+  if (!current.tea || !current.milk || !current.sugar || !current.topping) {
+    toast("配方还没选完");
+    return;
+  }
+  const ok =
+    current.tea === state.order.tea &&
+    current.milk === state.order.milk &&
+    current.sugar === state.order.sugar &&
+    current.topping === state.order.topping;
+  if (!ok) {
+    state.combo = 0;
+    state.mistakes += 1;
+    toast("顾客说味道不对");
+    render();
+    return;
+  }
+  state.served += 1;
+  state.combo += 1;
+  save.games.milkTea.served += 1;
+  save.games.milkTea.best = save.games.milkTea.served;
+  reward(18 + state.combo * 2, "奶茶出杯");
+  if (state.served >= 5) {
+    reward(30, "奶茶店收工");
+    transient.milkTea = null;
+    render();
+    return;
+  }
+  state.order = nextDifferent(milkTeaOrders, state.order);
+  state.current = { tea: null, milk: null, sugar: null, topping: null };
+  persist();
+  render();
+}
+
+function milkTeaPreview(current) {
+  const parts = [current.tea, current.milk, current.sugar, current.topping].filter(Boolean);
+  return parts.length ? parts.join(" + ") : "空杯";
+}
+
+function renderFlowerShop(reset = false) {
+  if (!transient.flowerShop || reset) {
+    transient.flowerShop = {
+      order: randomFrom(flowerOrders),
+      current: { flowers: [], wrap: null },
+      served: 0,
+      streak: 0,
+    };
+  }
+  toolbarButton("清空花束", () => {
+    transient.flowerShop.current = { flowers: [], wrap: null };
+    render();
+  });
+  toolbarButton("新订单", () => renderFlowerShop(true));
+  const state = transient.flowerShop;
+  renderStats([
+    { label: "本轮", value: `${state.served}/5` },
+    { label: "连单", value: state.streak },
+    { label: "总花束", value: save.games.flowerShop.best || 0 },
+    { label: "金币", value: save.coins },
+  ]);
+  const surface = document.querySelector("#gameSurface");
+  surface.innerHTML = `
+    <div class="shop-layout">
+      <section class="order-ticket">
+        <div class="ticket-icon">💐</div>
+        <p class="eyebrow">Bouquet</p>
+        <h3>${state.order.name}</h3>
+        <p>${state.order.flowers.join(" · ")} · ${state.order.wrap}</p>
+        <div class="bouquet-preview">${flowerPreview(state.current)}</div>
+        <button class="primary-button" type="button" id="serveBouquet">包好</button>
+      </section>
+      <section class="prep-panel"></section>
+    </div>
+  `;
+  const panel = surface.querySelector(".prep-panel");
+  renderOptionGroup(
+    panel,
+    "花材",
+    flowerOptions.flower,
+    "",
+    (value) => {
+      if (state.current.flowers.length >= 3) {
+        toast("一束最多 3 枝");
+        return;
+      }
+      state.current.flowers.push(value);
+      render();
+    },
+    flowerEmoji,
+  );
+  renderOptionGroup(
+    panel,
+    "包装",
+    flowerOptions.wrap,
+    state.current.wrap,
+    (value) => {
+      state.current.wrap = value;
+      render();
+    },
+    flowerEmoji,
+  );
+  surface.querySelector("#serveBouquet").addEventListener("click", serveBouquet);
+}
+
+function serveBouquet() {
+  const state = transient.flowerShop;
+  if (state.current.flowers.length !== 3 || !state.current.wrap) {
+    toast("花材和包装还没选完");
+    return;
+  }
+  const ok = sameCounts(state.current.flowers, state.order.flowers) && state.current.wrap === state.order.wrap;
+  if (!ok) {
+    state.streak = 0;
+    toast("这束和订单不一样");
+    render();
+    return;
+  }
+  state.served += 1;
+  state.streak += 1;
+  save.games.flowerShop.served += 1;
+  save.games.flowerShop.best = save.games.flowerShop.served;
+  reward(20 + state.streak * 2, "花束完成");
+  if (state.served >= 5) {
+    reward(32, "花店打烊");
+    transient.flowerShop = null;
+    render();
+    return;
+  }
+  state.order = nextDifferent(flowerOrders, state.order);
+  state.current = { flowers: [], wrap: null };
+  persist();
+  render();
+}
+
+function flowerPreview(current) {
+  const flowers = current.flowers.map((entry) => flowerEmoji[entry] || "🌸").join("");
+  const wrap = current.wrap ? flowerEmoji[current.wrap] || current.wrap : "待包装";
+  return flowers ? `${flowers} ${wrap}` : "空花束";
+}
+
+function renderStall(reset = false) {
+  if (!transient.stall || reset) {
+    transient.stall = { stock: 24, price: 9, decor: 1 };
+  }
+  toolbarButton("重置方案", () => renderStall(true));
+  const state = transient.stall;
+  renderStats([
+    { label: "天数", value: save.games.stall.day },
+    { label: "口碑", value: save.games.stall.reputation.toFixed(1) },
+    { label: "最好利润", value: save.games.stall.best || 0 },
+    { label: "金币", value: save.coins },
+  ]);
+  const surface = document.querySelector("#gameSurface");
+  surface.innerHTML = `
+    <div class="shop-layout stall-layout">
+      <section class="order-ticket">
+        <div class="ticket-icon">🛍️</div>
+        <p class="eyebrow">Night Market</p>
+        <h3>手作小摊</h3>
+        <p>${save.games.stall.last}</p>
+        <div class="stall-preview">
+          <span>库存 ${state.stock}</span>
+          <span>单价 ${state.price}</span>
+          <span>布置 ${state.decor}</span>
+        </div>
+        <button class="primary-button" type="button" id="startStallDay">开张</button>
+      </section>
+      <section class="prep-panel">
+        ${stallStepper("进货", "stock", state.stock, 6, 60, 3)}
+        ${stallStepper("单价", "price", state.price, 5, 18, 1)}
+        ${stallStepper("布置", "decor", state.decor, 0, 5, 1)}
+      </section>
+    </div>
+  `;
+  surface.querySelectorAll("[data-step]").forEach((button) => {
+    button.addEventListener("click", () => adjustStall(button.dataset.field, Number(button.dataset.step)));
+  });
+  surface.querySelector("#startStallDay").addEventListener("click", startStallDay);
+}
+
+function stallStepper(label, field, value, min, max, step) {
+  return `
+    <div class="stepper-row">
+      <div>
+        <span>${label}</span>
+        <strong>${value}</strong>
+      </div>
+      <div class="stepper-actions">
+        <button class="mini-button" type="button" data-field="${field}" data-step="${-step}" ${value <= min ? "disabled" : ""}>-</button>
+        <button class="mini-button" type="button" data-field="${field}" data-step="${step}" ${value >= max ? "disabled" : ""}>+</button>
+      </div>
+    </div>
+  `;
+}
+
+function adjustStall(field, step) {
+  const limits = {
+    stock: [6, 60],
+    price: [5, 18],
+    decor: [0, 5],
+  };
+  const [min, max] = limits[field];
+  transient.stall[field] = Math.max(min, Math.min(max, transient.stall[field] + step));
+  render();
+}
+
+function startStallDay() {
+  const state = transient.stall;
+  const cost = state.stock * 3 + state.decor * 15;
+  if (save.coins < cost) {
+    toast("金币不够进货");
+    return;
+  }
+  const weather = randomFrom(stallWeather);
+  const priceFactor = Math.max(0.38, 1.35 - (state.price - 8) * 0.08);
+  const baseDemand = 18 + save.games.stall.reputation * 4 + state.decor * 3;
+  const demand = Math.max(0, Math.round(baseDemand * weather.traffic * priceFactor + randInt(-4, 6)));
+  const sold = Math.min(state.stock, demand);
+  const revenue = sold * state.price;
+  const profit = revenue - cost;
+  save.coins += profit;
+  save.games.stall.best = Math.max(save.games.stall.best || 0, profit);
+  save.games.stall.day += 1;
+  const sellRate = state.stock ? sold / state.stock : 0;
+  const reputationDelta = sellRate > 0.72 && state.price <= 13 ? 0.25 : sellRate < 0.35 ? -0.2 : 0.05;
+  save.games.stall.reputation = Math.max(1, Math.min(5, save.games.stall.reputation + reputationDelta));
+  save.games.stall.last = `${weather.emoji}${weather.name} 卖出 ${sold}/${state.stock}，利润 ${profit}`;
+  persist();
+  toast(profit >= 0 ? `收摊盈利 ${profit}` : `今天亏了 ${Math.abs(profit)}`);
+  render();
+}
+
+function renderOptionGroup(container, title, options, active, onPick, emojiMap = null) {
+  const section = document.createElement("section");
+  section.className = "option-group";
+  section.innerHTML = `<h3>${title}</h3><div class="option-grid"></div>`;
+  const grid = section.querySelector(".option-grid");
+  options.forEach((option) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `recipe-button ${active === option ? "is-active" : ""}`;
+    button.textContent = emojiMap?.[option] ? `${emojiMap[option]} ${option}` : option;
+    button.addEventListener("click", () => onPick(option));
+    grid.append(button);
+  });
+  container.append(section);
+}
+
+function randomFrom(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function nextDifferent(list, current) {
+  if (list.length < 2) return current;
+  let next = randomFrom(list);
+  while (next === current) next = randomFrom(list);
+  return next;
+}
+
+function sameCounts(left, right) {
+  const counts = new Map();
+  left.forEach((entry) => counts.set(entry, (counts.get(entry) || 0) + 1));
+  right.forEach((entry) => counts.set(entry, (counts.get(entry) || 0) - 1));
+  return [...counts.values()].every((value) => value === 0);
+}
+
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function exportSave() {
