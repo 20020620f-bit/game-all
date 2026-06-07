@@ -2054,6 +2054,12 @@ h3 {
   font-weight: 800;
 }
 
+.shooter-best-stack {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
 .shooter-score,
 .shooter-life {
   display: grid;
@@ -2110,6 +2116,33 @@ h3 {
 .shooter-pips .is-live {
   background: #f45668;
   border-color: #1d2326;
+}
+
+.shooter-pause-button {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(29, 35, 38, 0.18);
+  border-radius: 999px;
+  background: rgba(244, 248, 248, 0.7);
+  box-shadow: 0 8px 20px rgba(29, 35, 38, 0.08);
+  color: #1d2326;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: auto;
+  backdrop-filter: blur(8px);
+}
+
+.shooter-pause-button.is-paused {
+  padding-left: 2px;
+}
+
+.shooter-pause-button:disabled {
+  cursor: default;
+  opacity: 0.48;
 }
 
 .shooter-overlay {

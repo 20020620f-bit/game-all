@@ -1605,7 +1605,10 @@ function renderSkyShooter() {
         </div>
       </div>
       <div class="shooter-subhud">
-        <span>最好 <strong id="shooterBest">${save.games.skyShooter.best}</strong></span>
+        <div class="shooter-best-stack">
+          <span>最好 <strong id="shooterBest">${save.games.skyShooter.best}</strong></span>
+          <button id="shooterPauseBtn" class="shooter-pause-button" type="button" title="暂停" aria-label="暂停" disabled>Ⅱ</button>
+        </div>
         <span>金币 <strong id="shooterCoins">${save.coins}</strong></span>
       </div>
       <div id="shooterOverlay" class="shooter-overlay" aria-live="polite">
@@ -1631,6 +1634,7 @@ function createSkyShooter(root) {
   const pipsNode = root.querySelector("#shooterPips");
   const bestNode = root.querySelector("#shooterBest");
   const coinsNode = root.querySelector("#shooterCoins");
+  const pauseButton = root.querySelector("#shooterPauseBtn");
   const overlay = root.querySelector("#shooterOverlay");
   const overlayTitle = root.querySelector("#shooterOverlayTitle");
   const overlayText = root.querySelector("#shooterOverlayText");
@@ -1642,6 +1646,7 @@ function createSkyShooter(root) {
   let raf = 0;
   let last = 0;
   let running = false;
+  let paused = false;
   let ended = false;
   let score = 0;
   let lives = 3;
@@ -1693,6 +1698,7 @@ function createSkyShooter(root) {
     enemies = [];
     particles = [];
     ended = false;
+    paused = false;
     running = false;
     player.x = width / 2;
     player.y = height - 78;
@@ -1709,6 +1715,7 @@ function createSkyShooter(root) {
     pipsNode.innerHTML = Array.from({ length: 3 }, (_, index) =>
       `<span class="${index < lives ? "is-live" : ""}"></span>`,
     ).join("");
+    updatePauseButton();
   }
 
   function updateOuterStats() {
@@ -1736,11 +1743,40 @@ function createSkyShooter(root) {
     overlay.classList.remove("is-visible");
   }
 
+  function updatePauseButton() {
+    pauseButton.textContent = paused ? "▶" : "Ⅱ";
+    pauseButton.title = paused ? "继续" : "暂停";
+    pauseButton.setAttribute("aria-label", paused ? "继续" : "暂停");
+    pauseButton.classList.toggle("is-paused", paused);
+    pauseButton.disabled = ended || (!running && !paused);
+  }
+
+  function togglePause() {
+    if (ended) return;
+    if (paused) {
+      paused = false;
+      running = true;
+      last = performance.now();
+      updatePauseButton();
+      raf = window.requestAnimationFrame(step);
+      return;
+    }
+    if (!running) return;
+    paused = true;
+    running = false;
+    pointer.active = false;
+    window.cancelAnimationFrame(raf);
+    updatePauseButton();
+    draw();
+  }
+
   function start() {
     if (running) return;
     hideOverlay();
+    paused = false;
     running = true;
     last = performance.now();
+    updatePauseButton();
     raf = window.requestAnimationFrame(step);
   }
 
@@ -1759,6 +1795,7 @@ function createSkyShooter(root) {
     persist();
     lives = 3;
     ended = false;
+    paused = false;
     player.invulnerable = 2.4;
     enemies = enemies.filter((enemy) => enemy.y < 0);
     enemyBullets = [];
@@ -1770,6 +1807,7 @@ function createSkyShooter(root) {
   function finishRun() {
     if (ended) return;
     ended = true;
+    paused = false;
     running = false;
     window.cancelAnimationFrame(raf);
     const gameSave = save.games.skyShooter;
@@ -1778,6 +1816,7 @@ function createSkyShooter(root) {
     persist();
     updateHud();
     updateOuterStats();
+    updatePauseButton();
     setOverlay("飞机坠毁", `本局 ${score} 分，击落 ${kills} 个目标。`, [
       {
         label: `花 ${SKY_SHOOTER_CONTINUE_COST} 金币续 3 命`,
@@ -2238,6 +2277,7 @@ function createSkyShooter(root) {
   canvas.addEventListener("pointermove", onPointerMove, { passive: false });
   canvas.addEventListener("pointerup", onPointerUp);
   canvas.addEventListener("pointercancel", onPointerUp);
+  pauseButton.addEventListener("click", togglePause);
 
   resize();
   resetRun();
@@ -2257,6 +2297,7 @@ function createSkyShooter(root) {
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerUp);
+      pauseButton.removeEventListener("click", togglePause);
     },
   };
 }
